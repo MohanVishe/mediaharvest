@@ -39,6 +39,12 @@
                   @if (download.value.status === 'queued') {
                     <span class="badge bg-secondary">Queued</span>
                   }
+                  @if (download.value.status === 'resuming') {
+                    <span class="badge bg-warning text-dark">Reconnecting</span>
+                    @if (download.value.msg) {
+                      <small class="w-100 text-body-secondary">{{ download.value.msg }}</small>
+                    }
+                  }
                 </div>
                 @if (download.value.status === 'scheduled') {
                   <span class="badge bg-warning text-dark">

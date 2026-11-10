@@ -6,6 +6,7 @@ These run against the real yt-dlp, as every other test module does.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import multiprocessing
 import json
 import os
@@ -1512,3 +1513,159 @@ class UserDictOptionMergeTests(unittest.TestCase):
         params = _capture_ytdl_params(download)
         self.assertEqual(len(params['progress_hooks']), 1)
         self.assertEqual(len(params['postprocessor_hooks']), 1)
+
+
+_EXPIRED = 'ERROR: unable to download video data: HTTP Error 403: Forbidden'
+
+
+class ResumeTests(unittest.TestCase):
+    """A stopped download is run again with a fresh extraction, continuing
+    from its .part file, instead of failing."""
+
+    def _run(self, outcomes, logs=True):
+        """Run ``_download`` where pass N does ``outcomes[N]``: an int is the
+        return code, an exception is raised, and a ``('progress', n, then)``
+        tuple reports n more bytes on one file before doing ``then``."""
+        download = _make_test_download()
+        statuses = []
+        download.status_queue = types.SimpleNamespace(put=statuses.append)
+        passes = []
+        sleeps = []
+        size = {'bytes': 0}
+
+        class FakeYoutubeDL:
+            def __init__(self, params):
+                self.params = params
+
+            def download(self, urls):
+                outcome = outcomes[len(passes)]
+                passes.append(download._resuming)
+                if isinstance(outcome, tuple):
+                    _, grown, outcome = outcome
+                    hook = self.params['progress_hooks'][0]
+                    for step in (0, grown):
+                        hook({'status': 'downloading', 'tmpfilename': '/tmp/v.f1.webm.part',
+                              'filename': '/tmp/v.f1.webm', 'downloaded_bytes': size['bytes'] + step,
+                              'total_bytes': 10 ** 12})
+                    size['bytes'] += grown
+                if isinstance(outcome, BaseException):
+                    raise outcome
+                return outcome
+
+        with patch.object(download, '_make_youtube_dl', side_effect=FakeYoutubeDL), \
+             patch('ytdl.install_socket_guard'), \
+             patch('ytdl.os.setpgrp'), \
+             patch('ytdl.time.sleep', side_effect=sleeps.append), \
+             (self.assertLogs('ytdl', level='WARNING') if logs else contextlib.nullcontext()):
+            download._download()
+        return statuses, passes, sleeps
+
+    def test_expired_link_resumes_with_a_fresh_pass(self):
+        statuses, passes, sleeps = self._run([
+            ytdl.yt_dlp.utils.DownloadError(_EXPIRED),
+            0,
+        ])
+
+        self.assertEqual(passes, [False, True])
+        self.assertEqual(sleeps, [15])
+        self.assertEqual([s['status'] for s in statuses], ['resuming', 'finished'])
+        self.assertEqual(
+            statuses[0]['msg'],
+            'Paused: the video link expired. Resuming in 15 s from where it stopped (attempt 1 of 10).')
+
+    def test_a_refused_video_fails_at_once(self):
+        statuses, passes, sleeps = self._run([
+            ytdl.yt_dlp.utils.DownloadError('ERROR: [youtube] abc: Video unavailable'),
+        ])
+
+        self.assertEqual(passes, [False])
+        self.assertEqual(sleeps, [])
+        self.assertEqual(statuses[-1]['status'], 'error')
+
+    def test_gives_up_after_the_attempt_limit_without_progress(self):
+        limit = ytdl._RESUME_MAX_ATTEMPTS
+        statuses, passes, sleeps = self._run(
+            [ytdl.yt_dlp.utils.DownloadError(_EXPIRED)] * (limit + 1))
+
+        self.assertEqual(len(passes), limit + 1)
+        self.assertEqual(sleeps, [ytdl._resume_delay(n) for n in range(1, limit + 1)])
+        self.assertEqual(statuses[-1]['status'], 'error')
+        self.assertIn('HTTP Error 403', statuses[-1]['msg'])
+
+    def test_progress_resets_the_attempt_count(self):
+        # Every pass fetches 5 MiB and then loses its link: far more passes
+        # than the limit, and still no failure, because each one got further.
+        limit = ytdl._RESUME_MAX_ATTEMPTS
+        grown = 5 * 1024 * 1024
+        outcomes = [('progress', grown, ytdl.yt_dlp.utils.DownloadError(_EXPIRED))] * (limit + 5)
+        statuses, passes, sleeps = self._run(outcomes + [0])
+
+        self.assertEqual(len(passes), limit + 6)
+        self.assertEqual(set(sleeps), {15})
+        self.assertEqual(statuses[-1]['status'], 'finished')
+        resuming = [s for s in statuses if s['status'] == 'resuming']
+        self.assertTrue(all(s.get('tmpfilename') == '/tmp/v.f1.webm.part' for s in resuming))
+
+    def test_nonzero_exit_without_a_reason_fails(self):
+        statuses, passes, _ = self._run([1, 0], logs=False)
+        # No warning says why the run failed, so there is nothing to resume on.
+        self.assertEqual(passes, [False])
+        self.assertEqual(statuses[-1]['status'], 'error')
+
+    def test_resumed_pass_skips_the_disk_check(self):
+        download = _make_test_download()
+        self.assertTrue(any(isinstance(pp, DiskSpaceCheckPP)
+                            for pp in download._make_youtube_dl({})._pps['before_dl']))
+        download._resuming = True
+        self.assertFalse(any(isinstance(pp, DiskSpaceCheckPP)
+                             for pp in download._make_youtube_dl({})._pps['before_dl']))
+
+
+class ResumableErrorTests(unittest.TestCase):
+    def test_link_and_network_failures_are_resumable(self):
+        for message in (
+            _EXPIRED,
+            'ERROR: unable to download video data: HTTP Error 503: Service Unavailable',
+            'ERROR: unable to download video data: The read operation timed out',
+            'ERROR: [download] Got error: Connection reset by peer. Giving up after 30 retries',
+            'ERROR: fragment 12 not found, giving up after 30 fragment retries',
+            'ERROR: unable to download video data: <urlopen error [Errno -3] Temporary failure in name resolution>',
+            'ERROR: Did not get any data blocks',
+            'ERROR: IncompleteRead(1024 bytes read, 2048 more expected)',
+        ):
+            with self.subTest(message=message):
+                self.assertTrue(ytdl._is_resumable_error(message))
+
+    def test_other_failures_are_not(self):
+        for message in (
+            '',
+            'ERROR: [youtube] abc: Video unavailable',
+            'ERROR: [youtube] abc: Private video. Sign in if you have access',
+            "ERROR: [youtube] abc: Sign in to confirm you're not a bot. HTTP Error 403",
+            'ERROR: Postprocessing: Not enough disk space: this download needs about 50GiB',
+            'ERROR: unable to write data: [Errno 28] No space left on device',
+            'ERROR: Requested format is not available',
+            'ERROR: unable to download video data: HTTP Error 404: Not Found',
+        ):
+            with self.subTest(message=message):
+                self.assertFalse(ytdl._is_resumable_error(message))
+
+    def test_delay_doubles_up_to_five_minutes(self):
+        self.assertEqual([ytdl._resume_delay(n) for n in range(1, 8)],
+                         [15, 30, 60, 120, 240, 300, 300])
+
+    def test_reason_is_in_plain_words(self):
+        for message, reason in (
+            ('a warning\n' + _EXPIRED, 'the video link expired'),
+            # The real message from a test with the network cut.
+            ("ERROR: [download] Got error: HTTPSConnection(host='rr2.googlevideo.com', port=443): "
+             "Failed to resolve 'rr2.googlevideo.com' ([Errno -3] Temporary failure in name "
+             "resolution). Giving up after 30 retries", 'no network connection'),
+            ('ERROR: unable to download video data: The read operation timed out',
+             'the connection timed out'),
+            ('ERROR: unable to download video data: HTTP Error 503: Service Unavailable',
+             'the server is busy (HTTP 503)'),
+            ('ERROR: Connection reset by peer', 'the connection dropped'),
+        ):
+            with self.subTest(reason=reason):
+                self.assertEqual(ytdl._resume_reason(message), reason)

@@ -40,6 +40,20 @@ MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the gu
 | `DEFAULT_FOLDER` | | Folder the field starts with, relative to the download directory. Requires `CUSTOM_DIRS`. |
 | `DOWNLOAD_DIRS_INDEXABLE` | `false` | Serve browsable listings of the download directories. |
 
+### Very large downloads
+
+A 138-hour video at 720p is about 51 GB, and merging needs about as much again
+while it runs. Keep the download folder on a drive with that much room.
+
+On **Windows with Docker Desktop**, put the download folder on a Windows drive
+(`C:\Users\you\Downloads\MediaHarvest`, which is what `install.ps1` does, or
+`/mnt/c/...` from WSL). A folder inside WSL lives in a virtual disk that reports
+far more free space than the drive under it has, so the disk check before a
+download can't warn you in time.
+
+Downloads that stop part-way resume by themselves; there is nothing to set. See
+"Video, including very long ones" in the [README](../README.md).
+
 ## File naming
 
 Templates use [yt-dlp's output template syntax](https://github.com/yt-dlp/yt-dlp/blob/master/README.md#output-template). How MediaHarvest applies them is explained in [Output templates](https://github.com/alexta69/metube/wiki/Output-templates).

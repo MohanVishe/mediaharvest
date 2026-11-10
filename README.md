@@ -33,8 +33,14 @@ work, through [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 - Subtitles: English by default (written ones, or YouTube's automatic ones when
   there are none), English plus other languages, or none. They're embedded as
   switchable tracks and saved beside the video as `.srt`.
-- Long downloads retry, fetch 4 pieces at a time, and resume after a failure. Disk
-  space is checked before a download starts.
+- No length or size limit. A download that stops (the network drops, or YouTube's
+  video link expires, which it does after about 6 hours) carries on by itself from
+  where it stopped, with a fresh link. So does one cut off by a restart. Each
+  failed try waits longer, from 15 seconds up to 5 minutes; after 10 tries in a
+  row with no progress it shows as failed, and **Retry** still continues from
+  the partial file.
+- Disk space is checked before a download starts, counting the room needed to
+  merge video and audio (about twice the final size).
 
 **And more:** whole playlists and channels, subscriptions that fetch new uploads,
 clips by start and end time, sponsor-segment removal, splitting by chapters,

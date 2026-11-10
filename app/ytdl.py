@@ -42,6 +42,68 @@ _MAX_RETAINED_WARNINGS = 5
 
 _REPORT_LABEL_RE = re.compile(r'^(?:ERROR|WARNING):\s*')
 
+# Automatic resume. A media URL from YouTube is signed for about six hours, so
+# a download that runs longer is refused part-way (HTTP 403); a dropped
+# connection that outlasts yt-dlp's own retries ends a run the same way. Both
+# are fixed by running the download again: a new run extracts fresh URLs and
+# yt-dlp continues from the .part file instead of starting over.
+#
+# Only consecutive failures count: an attempt that fetched at least
+# _RESUME_PROGRESS_BYTES resets the count, so a 400-hour download may resume
+# as often as it needs, while a link that never works gives up after
+# _RESUME_MAX_ATTEMPTS tries (about 35 minutes of waiting in all).
+_RESUME_MAX_ATTEMPTS = 10
+_RESUME_PROGRESS_BYTES = 1024 * 1024
+_RESUME_FIRST_DELAY = 15
+_RESUME_MAX_DELAY = 300
+_RESUMABLE_ERROR_RE = re.compile(
+    r'HTTP Error (?:403|408|429|5\d\d)'
+    r'|timed out|\btimeout\b'
+    r'|Connection (?:reset|aborted|refused|broken)|ECONNRESET|Broken pipe'
+    r'|Remote end closed|IncompleteRead|EOF occurred'
+    r'|Network is unreachable|No route to host'
+    r'|Temporary failure in name resolution|Name or service not known'
+    r'|Did not get any data blocks'
+    r'|giving up after \d+ (?:fragment )?retries',
+    re.IGNORECASE,
+)
+# A full disk or a refused video does not get better by trying again.
+_NOT_RESUMABLE_ERROR_RE = re.compile(
+    r'No space left on device|Not enough disk space|Video unavailable|Private video'
+    r'|Sign in to confirm|members-only|copyright',
+    re.IGNORECASE,
+)
+
+
+def _is_resumable_error(message: str) -> bool:
+    message = message or ''
+    return bool(_RESUMABLE_ERROR_RE.search(message)) and not _NOT_RESUMABLE_ERROR_RE.search(message)
+
+
+def _resume_delay(failures: int) -> int:
+    """Seconds to wait before resume attempt *failures* (1-based): 15, 30,
+    60, 120, 240, then 300 for every later one."""
+    return min(_RESUME_FIRST_DELAY * 2 ** (max(failures, 1) - 1), _RESUME_MAX_DELAY)
+
+
+# What a stopped pass is shown as, first match wins; the full error stays in
+# the log.
+_RESUME_REASONS = (
+    (re.compile(r'HTTP Error 403', re.IGNORECASE), 'the video link expired'),
+    (re.compile(r'name resolution|Name or service not known|Network is unreachable|No route to host',
+                re.IGNORECASE), 'no network connection'),
+    (re.compile(r'timed out|\btimeout\b', re.IGNORECASE), 'the connection timed out'),
+    (re.compile(r'HTTP Error (429|5\d\d)', re.IGNORECASE), 'the server is busy (HTTP {0})'),
+)
+
+
+def _resume_reason(message: str) -> str:
+    """Why a pass stopped, in plain words, short enough for a status line."""
+    for pattern, reason in _RESUME_REASONS:
+        if match := pattern.search(message or ''):
+            return reason.format(*match.groups())
+    return 'the connection dropped'
+
 
 def _report_body(message):
     """yt-dlp labels errors with an ``ERROR:`` prefix but hands warnings to the
@@ -866,6 +928,13 @@ class Download:
         self.ytdl_opts = {}
         self.canceled = False
         self.tmpfilename = None
+        # Worker-side resume bookkeeping (see _RESUME_MAX_ATTEMPTS): bytes
+        # fetched over every pass, the last count seen per file, the last
+        # partial file, and whether the current pass is a resume.
+        self._fetched_bytes = 0
+        self._bytes_seen = {}
+        self._last_tmpfilename = None
+        self._resuming = False
         self.status_queue = None
         self.proc = None
         self.loop = None
@@ -896,6 +965,7 @@ class Download:
         def put_status(st):
             nonlocal last_forward
             if st.get('status') == 'downloading':
+                self._note_progress(st)
                 now = time.monotonic()
                 if now - last_forward < self._PROGRESS_THROTTLE_SECONDS:
                     return
@@ -913,6 +983,21 @@ class Download:
             )})
 
         return put_status
+
+    def _note_progress(self, st):
+        """Count the bytes a pass really fetched. A resumed pass starts its
+        count at the size of the .part file, so only growth past the last
+        count seen for that file is new."""
+        name = st.get('tmpfilename') or st.get('filename')
+        if name:
+            self._last_tmpfilename = st.get('tmpfilename') or self._last_tmpfilename
+        done = st.get('downloaded_bytes')
+        if not name or not isinstance(done, (int, float)):
+            return
+        previous = self._bytes_seen.get(name)
+        if previous is not None and done > previous:
+            self._fetched_bytes += done - previous
+        self._bytes_seen[name] = done
 
     def _make_postprocessor_hook(self):
         # yt-dlp reports the download 'finished' as soon as the media bytes
@@ -995,7 +1080,8 @@ class Download:
                 and getattr(self.info, 'video_subtitles', 'none') in ('en', 'en_all')):
             ydl.auto_caption_filter = re.compile(r'en')
             ydl.subtitles_best_effort = True
-        if getattr(self.info, 'download_type', '') in ('video', 'audio'):
+        resuming = getattr(self, '_resuming', False)
+        if getattr(self.info, 'download_type', '') in ('video', 'audio') and not resuming:
             ydl.add_post_processor(
                 DiskSpaceCheckPP(ydl, (self.temp_dir, self.download_dir)), when='before_dl')
         return ydl
@@ -1050,7 +1136,7 @@ class Download:
                 # Long videos (multi-hour streams, lectures) are many GB over
                 # one connection: retry harder than yt-dlp's default 10 and
                 # fetch HLS/DASH fragments in parallel. yt-dlp resumes .part
-                # files, so a Retry continues where a failed run stopped.
+                # files; the resume loop below reruns a stopped download.
                 # YTDL_OPTIONS, presets and overrides below still win.
                 'retries': 30,
                 'fragment_retries': 30,
@@ -1119,12 +1205,7 @@ class Download:
                     [(start, end)],
                 )
 
-            ret = self._make_youtube_dl(ytdl_params).download([self.info.url])
-            if ret == 0:
-                self.status_queue.put({'status': 'finished'})
-            else:
-                msg = '\n'.join(ytdl_logger.warnings) or f'yt-dlp failed with exit code {ret}'
-                self.status_queue.put({'status': 'error', 'msg': msg})
+            self._run_passes(ytdl_params)
             log.info(f"Finished download for: {self.info.title}")
         except yt_dlp.utils.YoutubeDLError as exc:
             log.error(f"Download error for {self.info.title}: {str(exc)}")
@@ -1136,6 +1217,52 @@ class Download:
             # cancel()'s SIGINT: the download is being removed, so there is no
             # status to report; just exit without a traceback.
             log.info(f"Download interrupted: {self.info.title}")
+
+    def _run_passes(self, ytdl_params):
+        """Run the download, and run it again while it stops for a reason a
+        new pass fixes. Each pass is a whole new yt-dlp run: it extracts the
+        video again (fresh, unexpired media URLs) and continues from the .part
+        files the previous pass left. See _RESUME_MAX_ATTEMPTS. Reports
+        'finished' or 'error' last, and 'resuming' while it waits."""
+        failures = 0
+        while True:
+            ytdl_logger = _DownloadYtdlLogger()
+            ytdl_params['logger'] = ytdl_logger
+            fetched_before = self._fetched_bytes
+            try:
+                ret = self._make_youtube_dl(ytdl_params).download([self.info.url])
+            except yt_dlp.utils.YoutubeDLError as exc:
+                log.error("Download error for %s: %s", self.info.title, exc)
+                error = ytdl_logger.failure_message(str(exc))
+            else:
+                if ret == 0:
+                    self.status_queue.put({'status': 'finished'})
+                    return
+                error = '\n'.join(ytdl_logger.warnings) or f'yt-dlp failed with exit code {ret}'
+            if self._fetched_bytes - fetched_before >= _RESUME_PROGRESS_BYTES:
+                failures = 0
+            failures += 1
+            if failures > _RESUME_MAX_ATTEMPTS or not _is_resumable_error(error):
+                self.status_queue.put({'status': 'error', 'msg': error})
+                return
+            delay = _resume_delay(failures)
+            reason = _resume_reason(error)
+            log.warning("Download of %s stopped (%s); resuming in %d s (attempt %d of %d)",
+                        self.info.title, reason, delay, failures, _RESUME_MAX_ATTEMPTS)
+            status = {
+                'status': 'resuming',
+                'msg': (f'Paused: {reason}. Resuming in {delay} s from where it stopped '
+                        f'(attempt {failures} of {_RESUME_MAX_ATTEMPTS}).'),
+            }
+            if self._last_tmpfilename:
+                # Keeps the partial file known to cancel(), which removes it.
+                status['tmpfilename'] = self._last_tmpfilename
+            self.status_queue.put(status)
+            time.sleep(delay)
+            # The disk check ran before the first pass. The part already on
+            # disk now counts against free space, so on a resumed pass it
+            # would refuse a download that fits.
+            self._resuming = True
 
     async def start(self, notifier, executor=None):
         log.info(f"Preparing download for: {self.info.title}")
