@@ -56,12 +56,13 @@ const PROBE: ProbeResult = {
   ],
 };
 
-function create(probe: ProbeResult = PROBE) {
+function create(probe: ProbeResult = PROBE, prefetched: ProbeResult | null = null) {
   const close = vi.fn();
+  const probeSpy = vi.fn(() => of(probe));
   TestBed.configureTestingModule({
     imports: [FormatPickerComponent],
     providers: [
-      { provide: DownloadsService, useValue: { probe: () => of(probe) } },
+      { provide: DownloadsService, useValue: { probe: probeSpy } },
       { provide: NgbActiveModal, useValue: { close, dismiss: vi.fn() } },
     ],
   });
@@ -69,8 +70,9 @@ function create(probe: ProbeResult = PROBE) {
   const picker = fixture.componentInstance;
   picker.payload = { url: 'https://example.com/v', ytdlOptionsPresets: [], ytdlOptionsOverrides: '' };
   picker.catalog = CATALOG;
+  picker.prefetched = prefetched;
   fixture.detectChanges();
-  return { picker, close, fixture };
+  return { picker, close, fixture, probeSpy };
 }
 
 describe('FormatPickerComponent', () => {
@@ -127,6 +129,13 @@ describe('FormatPickerComponent', () => {
     picker.lyrics = true;
     picker.download();
     expect(close.mock.calls[0][0]).toEqual(expect.objectContaining({ audioTags: 'none', lyrics: false }));
+  });
+
+  it('uses the link preview lookup instead of probing again', () => {
+    const { picker, probeSpy } = create(PROBE, { ...PROBE, title: 'From the preview' });
+    expect(probeSpy).not.toHaveBeenCalled();
+    expect(picker.title).toBe('From the preview');
+    expect(picker.bestVideoId).toBe('399');
   });
 
   it('shows the probe error', () => {

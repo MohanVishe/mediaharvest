@@ -183,3 +183,51 @@ main
 
   &.active
     color: var(--bs-success-text-emphasis)
+
+// Link preview card under the URL box.
+.link-preview
+  border-color: rgba(var(--mh-accent-rgb), .35)
+
+  .link-preview-thumb
+    width: 168px
+    aspect-ratio: 16 / 9
+    object-fit: cover
+    border-radius: .5rem
+    background: var(--bs-secondary-bg)
+
+  .min-w-0
+    min-width: 0
+
+  @media (max-width: 575.98px)
+    .link-preview-thumb
+      width: 100%
+
+// Video / Audio / Captions / Thumbnail as one row of buttons; full width and
+// even on a phone.
+.type-switch-row
+  display: flex
+
+  @media (max-width: 575.98px)
+    .type-switch
+      width: 100%
+
+      > .btn
+        flex: 1 1 0
+        padding-left: .25rem
+        padding-right: .25rem
+        font-size: .875rem
+
+        fa-icon
+          display: none
+
+.all-formats-btn
+  white-space: nowrap
+
+  @media (max-width: 575.98px)
+    flex: 0 1 auto
+    min-width: 0
+    padding-left: .75rem
+    padding-right: .75rem
+
+    fa-icon
+      display: none

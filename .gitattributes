@@ -1,0 +1,8 @@
+# LF everywhere so scripts run in Linux containers, whatever the host.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.gif binary

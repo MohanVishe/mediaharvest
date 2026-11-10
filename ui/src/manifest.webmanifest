@@ -1,11 +1,12 @@
 {
-  "name": "MeTube",
-  "short_name": "MeTube",
-  "theme_color": "#212529",
-  "background_color": "#fafafa",
+  "name": "MediaHarvest",
+  "short_name": "MediaHarvest",
+  "description": "Download videos and music in the format and quality you choose.",
+  "theme_color": "#0f766e",
+  "background_color": "#ffffff",
   "display": "standalone",
   "scope": "./",
-  "start_url": "./?utm_source=homescreen",
+  "start_url": "./",
   "icons": [
     {
       "src": "assets/icons/android-chrome-192x192.png",
@@ -16,6 +17,12 @@
       "src": "assets/icons/android-chrome-384x384.png",
       "sizes": "384x384",
       "type": "image/png"
+    },
+    {
+      "src": "assets/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "share_target": {

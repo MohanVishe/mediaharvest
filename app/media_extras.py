@@ -165,7 +165,7 @@ class DiskSpaceCheckPP(PostProcessor):
 
 LRCLIB_URL = 'https://lrclib.net/api'
 # LRCLIB asks clients to identify themselves; no personal details here.
-_USER_AGENT = 'MeTube-fork lyrics lookup (https://github.com/alexta69/metube)'
+_USER_AGENT = 'MediaHarvest lyrics lookup'
 _DURATION_TOLERANCE = 4  # seconds
 
 _NOISE = re.compile(

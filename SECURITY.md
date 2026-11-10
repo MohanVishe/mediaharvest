@@ -2,29 +2,29 @@
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately via
-[GitHub private vulnerability reporting](https://github.com/alexta69/metube/security/advisories/new)
-(Security tab → "Report a vulnerability"). Do **not** open a public issue for
-security problems.
+Report it privately through GitHub: the repository's **Security** tab →
+**Report a vulnerability**. Please don't open a public issue for a security
+problem. Include how to reproduce it and the version shown in the page footer.
 
-You can expect an initial response within a few days. Please include a
-reproduction and the MeTube release version (visible in the UI footer).
+Only the latest image is supported; update before reporting
+(`docker compose pull && docker compose up -d`).
 
-## Supported versions
+## What is and isn't a vulnerability
 
-MeTube is continuously released; only the **latest release** is supported.
-Update to the current Docker image before reporting.
+MediaHarvest has no login by design. The default setup publishes it on
+`127.0.0.1`, so only the computer it runs on can reach it. Opening it to a
+network without an authenticating reverse proxy is a configuration choice, so
+"the page is reachable without a login" is not a vulnerability.
 
-## Scope notes
+## Built-in protections
 
-MeTube ships **without authentication by design** — it is intended to run on a
-trusted network or behind an authenticating reverse proxy (see the
-[wiki](https://github.com/alexta69/metube/wiki/Reverse-proxy-configurations)).
-Reports that reduce to "the UI is reachable without a login" are expected
-behavior, not vulnerabilities.
-
-## CVEs
-
-Fixed vulnerabilities are published as GitHub security advisories, which
-credit the reporter and name the fixed release. MeTube does not request CVE
-IDs.
+- Links to private and internal addresses are refused (SSRF guard), unless
+  `ALLOW_PRIVATE_ADDRESSES` is set.
+- Requests from other websites are refused (cross-site request guard), unless
+  listed in `CORS_ALLOWED_ORIGINS`.
+- Per-download yt-dlp options are off by default (`ALLOW_YTDL_OPTIONS_OVERRIDES`):
+  they can run commands inside the container.
+- File paths built from site metadata are kept inside the download folder.
+- Every binary the image downloads (ffmpeg, the PO-token helper, uv) is pinned
+  to one version and checked against its SHA-256 at build time.
+- CI scans the repository for known vulnerabilities on every push.

@@ -1,5 +1,76 @@
 /* You can add global styles to this file, and also import other style files */
 
+// MediaHarvest brand: Bootstrap's compiled blue swapped for the logo's teal
+// through its CSS variables (Bootstrap is loaded as plain CSS, not Sass).
+// teal-700 on white is 5.5:1; the dark theme uses the lighter teal-400.
+:root, [data-bs-theme="light"]
+    --mh-accent: #0f766e
+    --mh-accent-hover: #115e59
+    --mh-accent-active: #134e4a
+    --mh-accent-text: #0f766e
+    --mh-accent-rgb: 15, 118, 110
+    --bs-primary: var(--mh-accent)
+    --bs-primary-rgb: var(--mh-accent-rgb)
+    --bs-link-color: var(--mh-accent-text)
+    --bs-link-color-rgb: var(--mh-accent-rgb)
+    --bs-link-hover-color: var(--mh-accent-hover)
+    --bs-focus-ring-color: rgba(var(--mh-accent-rgb), .25)
+
+[data-bs-theme="dark"]
+    --mh-accent: #0f766e
+    --mh-accent-hover: #0d9488
+    --mh-accent-active: #14b8a6
+    --mh-accent-text: #2dd4bf
+    --mh-accent-rgb: 45, 212, 191
+    --bs-primary: var(--mh-accent-text)
+    --bs-primary-rgb: var(--mh-accent-rgb)
+    --bs-link-color: var(--mh-accent-text)
+    --bs-link-color-rgb: var(--mh-accent-rgb)
+    --bs-link-hover-color: #5eead4
+    --bs-focus-ring-color: rgba(var(--mh-accent-rgb), .25)
+
+.btn-primary
+    --bs-btn-bg: var(--mh-accent)
+    --bs-btn-border-color: var(--mh-accent)
+    --bs-btn-hover-bg: var(--mh-accent-hover)
+    --bs-btn-hover-border-color: var(--mh-accent-hover)
+    --bs-btn-active-bg: var(--mh-accent-active)
+    --bs-btn-active-border-color: var(--mh-accent-active)
+    --bs-btn-disabled-bg: var(--mh-accent)
+    --bs-btn-disabled-border-color: var(--mh-accent)
+    --bs-btn-focus-shadow-rgb: var(--mh-accent-rgb)
+
+.btn-outline-primary
+    --bs-btn-color: var(--mh-accent-text)
+    --bs-btn-border-color: var(--mh-accent-text)
+    --bs-btn-hover-color: #fff
+    --bs-btn-hover-bg: var(--mh-accent)
+    --bs-btn-hover-border-color: var(--mh-accent)
+    --bs-btn-active-color: #fff
+    --bs-btn-active-bg: var(--mh-accent)
+    --bs-btn-active-border-color: var(--mh-accent)
+    --bs-btn-disabled-color: var(--mh-accent-text)
+    --bs-btn-disabled-border-color: var(--mh-accent-text)
+    --bs-btn-focus-shadow-rgb: var(--mh-accent-rgb)
+
+.btn-link
+    --bs-btn-color: var(--mh-accent-text)
+    --bs-btn-hover-color: var(--bs-link-hover-color)
+
+.form-check-input:checked
+    background-color: var(--mh-accent)
+    border-color: var(--mh-accent)
+
+.form-control:focus, .form-select:focus, .form-check-input:focus
+    border-color: var(--mh-accent-text)
+    box-shadow: 0 0 0 .25rem rgba(var(--mh-accent-rgb), .25)
+
+.dropdown-menu
+    --bs-dropdown-link-active-bg: var(--mh-accent)
+
+.text-primary
+    color: var(--mh-accent-text) !important
+
 .navbar
     background-color: var(--bs-dark) !important
 

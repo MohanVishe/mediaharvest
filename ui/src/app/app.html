@@ -1,8 +1,8 @@
 <nav class="navbar navbar-expand-md navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand d-flex align-items-center" href="#">
-      <img src="assets/icons/android-chrome-192x192.png" alt="MeTube Logo" height="32" class="me-2">
-      MeTube
+      <img src="assets/icons/logo.svg" alt="" height="32" width="32" class="me-2">
+      MediaHarvest
     </a>
     <div class="download-metrics">
       @if (activeDownloads > 0) {
@@ -137,19 +137,24 @@
                   <button type="button" ngbDropdownItem
                     (click)="chooseFormat()"
                     [disabled]="!addUrl || !addUrl.trim()">
-                    Choose format&hellip;
+                    <fa-icon [icon]="faSlidersH" class="me-2 opacity-75" />Choose format&hellip;
                   </button>
                   <button type="button" ngbDropdownItem
                     (click)="browsePlaylist()"
                     [disabled]="!addUrl || !addUrl.trim()">
-                    Browse&hellip;
+                    <fa-icon [icon]="faListUl" class="me-2 opacity-75" />Pick from playlist&hellip;
+                  </button>
+                  <button type="button" ngbDropdownItem
+                    (click)="addSubscription()">
+                    <fa-icon [icon]="faRss" class="me-2 opacity-75" />Subscribe to channel or playlist
                   </button>
                 </div>
               </div>
-              <button class="btn btn-outline-secondary btn-lg px-3" type="button"
-                (click)="addSubscription()"
-                [disabled]="downloads.loading">
-                Subscribe
+              <button class="btn btn-outline-primary btn-lg px-3 all-formats-btn" type="button"
+                (click)="chooseFormat()"
+                [disabled]="downloads.loading || !addUrl || !addUrl.trim()"
+                title="See every quality and format this video offers">
+                <fa-icon [icon]="faSlidersH" class="me-1" /> All formats
               </button>
             }
           </ng-template>
@@ -162,8 +167,10 @@
               autocomplete="off"
               spellcheck="false"
               class="form-control form-control-lg"
-              placeholder="Enter video, channel, or playlist URL"
+              placeholder="Paste a video, playlist or channel link"
+              aria-label="Video, playlist or channel link"
               [(ngModel)]="addUrl"
+              (ngModelChange)="urlChanged($event)"
               [ngModelOptions]="{standalone: true}"
               [disabled]="addInProgress || subscribeInProgress">
             <div class="btn-group w-100" role="group" aria-label="Download or subscribe">
@@ -177,8 +184,10 @@
               autocomplete="off"
               spellcheck="false"
               class="form-control form-control-lg"
-              placeholder="Enter video, channel, or playlist URL"
+              placeholder="Paste a video, playlist or channel link"
+              aria-label="Video, playlist or channel link"
               [(ngModel)]="addUrl"
+              (ngModelChange)="urlChanged($event)"
               [ngModelOptions]="{standalone: true}"
               [disabled]="addInProgress || subscribeInProgress">
             <ng-container [ngTemplateOutlet]="urlBarActions" />
@@ -186,41 +195,61 @@
         </div>
       </div>
 
+      <!-- Link preview: what the pasted video is and how many formats it
+           offers, before anything is downloaded. -->
+      @if (previewFor(addUrl); as p) {
+        <div class="link-preview card mb-4" aria-live="polite">
+          @if (p.loading) {
+            <div class="card-body d-flex align-items-center gap-3 text-body-secondary">
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              Looking up this link&hellip;
+            </div>
+          } @else if (p.summary; as s) {
+            <div class="card-body d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
+              @if (s.thumbnail) {
+                <img class="link-preview-thumb flex-shrink-0" [src]="s.thumbnail" alt="" referrerpolicy="no-referrer" />
+              }
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-semibold text-break">{{ s.title }}</div>
+                @if (s.meta) {
+                  <div class="small text-body-secondary">{{ s.meta }}</div>
+                }
+                <div class="small mt-1">{{ s.counts }}</div>
+              </div>
+              <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+                <button type="button" class="btn btn-primary" (click)="chooseFormat()">
+                  <fa-icon [icon]="faSlidersH" class="me-1" /> Choose format
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- What to save: one tap picks the kind of download. -->
+      @if (catalog) {
+      <div class="type-switch-row mb-3">
+        <div class="btn-group type-switch" role="radiogroup" aria-label="What to download">
+          @for (type of downloadTypes; track type.id) {
+            <input type="radio" class="btn-check" name="downloadType"
+              [id]="'download-type-' + type.id"
+              [value]="type.id"
+              [(ngModel)]="downloadType"
+              (ngModelChange)="downloadTypeChanged()"
+              [disabled]="addInProgress || subscribeInProgress || downloads.loading">
+            <label class="btn btn-outline-primary" [for]="'download-type-' + type.id">
+              <fa-icon [icon]="typeIcon(type.id)" class="me-1" />{{ type.text }}
+            </label>
+          }
+        </div>
+      </div>
+      }
+
       <!-- Options Row: built from the server's catalog. Each type shows the
-           fields it carries, in the order Type, Codec, Format, Quality, Tags,
-           Language, Subtitle Source. -->
+           fields it carries, in the order Format, Quality, Tags, Lyrics,
+           Subtitles, Language, Subtitle Source. Codec is under Advanced. -->
       @if (catalog) {
       <div class="row mb-3 g-3">
-          <div [class]="optionColumnClass()">
-            <div class="input-group">
-              <span class="input-group-text">Type</span>
-              <select class="form-select"
-                name="downloadType"
-                [(ngModel)]="downloadType"
-                (change)="downloadTypeChanged()"
-                [disabled]="addInProgress || subscribeInProgress || downloads.loading">
-                @for (type of downloadTypes; track type.id) {
-                  <option [ngValue]="type.id">{{ type.text }}</option>
-                }
-              </select>
-            </div>
-          </div>
-          @if (codecOptions.length) {
-          <div [class]="optionColumnClass()">
-            <div class="input-group">
-              <span class="input-group-text">Codec</span>
-              <select class="form-select"
-                name="codec"
-                [(ngModel)]="codec"
-                (change)="codecChanged()"
-                [disabled]="addInProgress || subscribeInProgress || downloads.loading">
-                @for (vc of codecOptions; track vc.id) {
-                  <option [ngValue]="vc.id">{{ vc.text }}</option>
-                }
-              </select>
-            </div>
-          </div>
-          }
           <div [class]="optionColumnClass()">
             <div class="input-group">
               @if (hasSubtitleSettings()) {
@@ -362,6 +391,23 @@
               <!-- Output -->
               <div class="settings-section-label">Output</div>
               <div class="row g-3">
+                @if (codecOptions.length) {
+                <div class="col-md-6">
+                  <div class="input-group">
+                    <span class="input-group-text help-title" ngbPopover="Preferred video codec when you press Download. Auto picks the best the site offers. H.264 plays everywhere; AV1 and VP9 are smaller at the same quality." triggers="click" autoClose="outside" container="body">Video Codec</span>
+                    <select class="form-select"
+                      name="codec"
+                      [(ngModel)]="codec"
+                      (change)="codecChanged()"
+                      [disabled]="addInProgress || subscribeInProgress || downloads.loading">
+                      @for (vc of codecOptions; track vc.id) {
+                        <option [ngValue]="vc.id">{{ vc.text }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="w-100 d-none d-md-block m-0"></div>
+                }
                 <div class="col-md-6">
                   <div class="input-group">
                     <span class="input-group-text help-title" ngbPopover="Type to filter existing folders, or enter a new folder name." triggers="click" autoClose="outside" container="body">Download Folder</span>
@@ -661,7 +707,7 @@
         </div>
         <div class="version-separator"></div>
         <div class="version-item">
-          <span class="version-label">MeTube</span>
+          <span class="version-label">MediaHarvest</span>
           <span class="version-value">{{metubeVersion}}</span>
         </div>
         <div class="version-separator"></div>
@@ -674,9 +720,10 @@
         @if (ytDlpOptionsUpdateTime) {
           <div class="version-separator"></div>
         }
-        <a href="https://github.com/alexta69/metube" target="_blank" class="github-link">
+        <!-- AGPL-3.0 section 13: users of a network service get a link to its source. -->
+        <a href="https://github.com/MohanVishe/mediaharvest" target="_blank" rel="noopener" class="github-link">
           <fa-icon [icon]="faGithub" />
-          <span>GitHub</span>
+          <span>Source code</span>
         </a>
       </div>
     }

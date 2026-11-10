@@ -1,16 +1,31 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, afterNextRender, viewChild, viewChildren, inject, OnDestroy, OnInit } from '@angular/core';
-import { Observable, OperatorFunction, Subject, Subscription, from, map, merge, debounceTime, distinctUntilChanged, filter, finalize, mergeMap, tap } from 'rxjs';
+import { Observable, OperatorFunction, Subject, Subscription, from, map, merge, of, debounceTime, distinctUntilChanged, filter, finalize, mergeMap, switchMap, tap } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModal, NgbModule, NgbTypeahead } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { faTrashAlt, faCheckCircle, faTimesCircle, faCheck, faDownload, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faChevronRight, faChevronDown, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { IconDefinition, faTrashAlt, faCheckCircle, faTimesCircle, faCheck, faDownload, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faChevronRight, faChevronDown, faUpload, faSlidersH, faListUl, faRss, faFilm, faMusic, faClosedCaptioning, faImage } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
-import { ADD_REQUEST_CONCURRENCY, AddDownloadPayload, DownloadsService } from './services/downloads.service';
+import { ADD_REQUEST_CONCURRENCY, AddDownloadPayload, DownloadsService, ProbePayload, ProbeResult } from './services/downloads.service';
+
+// What the link preview shows for a pasted URL.
+export interface LinkPreview {
+  url: string;
+  loading: boolean;
+  result: ProbeResult | null;
+  summary: { title: string; thumbnail: string; meta: string; counts: string } | null;
+}
+
+const TYPE_ICONS: Record<string, IconDefinition> = {
+  video: faFilm,
+  audio: faMusic,
+  captions: faClosedCaptioning,
+  thumbnail: faImage,
+};
 import { MeTubeSocket } from './services/metube-socket.service';
 import { SubscriptionsService } from './services/subscriptions.service';
 import { ToastService } from './services/toast.service';
@@ -124,6 +139,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   ytDlpVersion: string | null = null;
   metubeVersion: string | null = null;
   isAdvancedOpen = false;
+  preview: LinkPreview | null = null;
+  private url$ = new Subject<string>();
   private previousDownloadType = '';
   private addRequestSub?: Subscription;
   private selectionsByType: Record<string, {
@@ -166,7 +183,33 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   faChevronRight = faChevronRight;
   faChevronDown = faChevronDown;
   faUpload = faUpload;
+  faSlidersH = faSlidersH;
+  faListUl = faListUl;
+  faRss = faRss;
   constructor() {
+    // A pasted link to one video is looked up once typing stops, so the page
+    // can show what it is and how many formats it has before downloading.
+    this.url$.pipe(
+      map(url => (url ?? '').trim()),
+      debounceTime(App.PREVIEW_DEBOUNCE_MS),
+      distinctUntilChanged(),
+      switchMap(url => {
+        if (!App.looksLikeOneVideo(url)) {
+          return of(null);
+        }
+        this.preview = { url, loading: true, result: null, summary: null };
+        this.cdr.markForCheck();
+        return this.downloads.probe(this.probePayload(url)).pipe(map(result => ({ url, result })));
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(hit => {
+      // A link the server cannot read gets no card; the picker shows the reason.
+      this.preview = hit && hit.result.status !== 'error'
+        ? { url: hit.url, loading: false, result: hit.result, summary: App.summarize(hit.result) }
+        : null;
+      this.cdr.markForCheck();
+    });
+
     // The page opens ready for a pasted URL. This waits for the first render
     // to finish: moving focus inside change detection confuses its bookkeeping.
     afterNextRender(() => this.focusUrlInput());
@@ -591,15 +634,85 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     return !!(type?.subtitle_mode || type?.subtitle_language);
   }
 
+  typeIcon(type: string): IconDefinition {
+    return TYPE_ICONS[type] ?? faDownload;
+  }
+
+  urlChanged(value: string) {
+    this.url$.next(value);
+  }
+
+  // The preview card for the URL now in the box, if there is one to show.
+  previewFor(url: string | undefined): LinkPreview | null {
+    const p = this.preview;
+    return p && p.url === (url ?? '').trim() ? p : null;
+  }
+
+  private static readonly PREVIEW_DEBOUNCE_MS = 600;
+
+  // One http(s) link that is not obviously a playlist, channel or feed.
+  // The server decides in the end: it refuses playlists, and the card hides.
+  static looksLikeOneVideo(url: string): boolean {
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      return false;
+    }
+    try {
+      const u = new URL(url);
+      const path = u.pathname.toLowerCase();
+      if (/\/(playlist|channel|c|user|feed|results)(\/|$)/.test(path)) {
+        return false;
+      }
+      if (/^\/@[^/]+\/?(videos|streams|shorts|playlists|featured)?\/?$/.test(path)) {
+        return false;
+      }
+      return !(u.searchParams.has('list') && !u.searchParams.has('v'));
+    } catch {
+      return false;
+    }
+  }
+
+  static durationLabel(seconds: number): string {
+    const s = Math.round(seconds);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = String(s % 60).padStart(2, '0');
+    return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+  }
+
+  static summarize(r: ProbeResult): NonNullable<LinkPreview['summary']> {
+    const formats = r.formats ?? [];
+    const video = formats.filter(f => f.kind !== 'audio').length;
+    const audio = formats.length - video;
+    const best = Math.max(0, ...formats.map(f => f.height ?? 0));
+    const meta = [
+      r.uploader ?? '',
+      r.duration ? App.durationLabel(r.duration) : '',
+      r.is_live ? 'Live now' : '',
+    ].filter(Boolean).join(' · ');
+    const plural = (n: number, word: string) => `${n} ${word} format${n === 1 ? '' : 's'}`;
+    const counts = `${plural(video, 'video')} and ${plural(audio, 'audio')} available`
+      + (best ? ` · up to ${best}p` : '');
+    return { title: r.title ?? '', thumbnail: r.thumbnail ?? '', meta, counts };
+  }
+
+  private probePayload(url: string): ProbePayload {
+    return {
+      url,
+      ytdlOptionsPresets: [...this.ytdlOptionsPresets],
+      ytdlOptionsOverrides: this.allowYtdlOptionsOverrides() ? this.ytdlOptionsOverrides : '',
+      videoPassword: this.videoPassword,
+    };
+  }
+
   // Four fields per row are too tight at ~768px for the longer values, so a
-  // four-field type goes 2×2 from md to lg and one row from lg up.
+  // four-field type goes 2×2 from md to lg and one row from lg up. The type
+  // itself is the button row above, and the codec is under Advanced.
   optionColumnClass(): string {
     const type = this.currentType();
     if (!type) {
       return 'col-md-6';
     }
-    const fields = 2
-      + (type.codec ? 1 : 0)
+    const fields = 1
       + (this.qualities.length ? 1 : 0)
       + (type.audio_tags ? 2 : 0)
       + (type.subtitles ? 1 : 0)
@@ -848,6 +961,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
       videoPassword: template.videoPassword,
     };
     picker.catalog = this.catalog;
+    const preview = this.previewFor(url);
+    picker.prefetched = preview?.result ?? null;
     picker.initialTab = this.downloadType === 'audio' ? 'audio' : 'video';
     picker.audioTags = this.audioTags;
     picker.lyrics = this.lyrics;

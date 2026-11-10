@@ -115,7 +115,7 @@ class _ExtractYtdlLogger(_DownloadYtdlLogger):
                     'again, use a preset or override with "download_archive": null.')
         if self.errors:
             return self.errors[-1]
-        return 'yt-dlp returned nothing for this URL; see the MeTube log for its output.'
+        return 'yt-dlp returned nothing for this URL; see the MediaHarvest log for its output.'
 
 
 # Python 3.14 switches the default multiprocessing start method on Linux

@@ -1,0 +1,13 @@
+MediaHarvest
+Copyright (C) 2026 Mohan Vishe
+
+MediaHarvest is a modified version of MeTube
+(https://github.com/alexta69/metube), copyright the MeTube contributors,
+licensed under the GNU Affero General Public License v3.0. MediaHarvest is
+released under the same license; see LICENSE.
+
+Changes from MeTube began on 2026-11-10 and are recorded in this repository's
+git history. They include a format picker and link preview, re-encoding to the
+chosen audio bitrate, lyrics lookup, video subtitles, a disk-space check,
+a reworked interface and branding, checksum-pinned image builds, installers,
+and a new CI and release pipeline.

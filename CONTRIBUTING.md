@@ -1,90 +1,43 @@
-# Contributing to MeTube
+# Contributing to MediaHarvest
 
-Feature requests and pull requests are both welcome.
+Bug reports, ideas and pull requests are welcome. For a change that isn't
+obvious, open an issue about the approach first. [AGENTS.md](AGENTS.md) has the
+scope, the project layout and the conventions.
 
-## Before you write code
+Site support and site-specific fixes belong in
+[yt-dlp](https://github.com/yt-dlp/yt-dlp/issues); MediaHarvest picks them up
+automatically.
 
-MeTube's scope is deliberately narrow: **it downloads well, and stops once the file
-is written.**
+## Develop
 
-- **Welcome:** features that improve the download itself — the queue, subscriptions,
-  output templates, the download form, and first-class UI for things yt-dlp already
-  does.
-- **Out of scope, regardless of implementation quality:** managing files after they
-  exist — tag editors, lookups against metadata services, library organization.
-  Dedicated tools do this properly (beets, MusicBrainz Picard, Lidarr).
-- **Belongs in yt-dlp:** site support and site-specific logic. Request it
-  [upstream](https://github.com/yt-dlp/yt-dlp/issues).
-
-The full policy, with the reasoning for borderline cases, is in
-[AGENTS.md](AGENTS.md#project-scope--read-this-before-planning-a-feature).
-
+Everything runs in the dev container, so nothing is installed on your machine:
+open the folder in VS Code and choose **Reopen in Container** (Docker needed).
 Then:
 
-1. Check the [wiki](https://github.com/alexta69/metube/wiki) — many requests are
-   already a configuration recipe — and the "Already decided" list in the
-   [feature request form](https://github.com/alexta69/metube/issues/new?template=feature_request.yml).
-2. For a change that isn't obvious, open an issue or a discussion about the
-   approach before writing code.
-3. Keep a pull request minimal: one feature, with a sensible default rather than a
-   new setting where possible. Follow-ups can add options once users ask for them.
-
-`master` is released continuously — every merge ships the same day — so a pull
-request must be release-ready exactly as merged.
-
-## Building and running locally
-
-You need Node.js 22+ and Python 3.13 or newer (the Docker image ships 3.14).
-
 ```bash
-# install Angular and build the UI
-cd ui
-curl -fsSL https://get.pnpm.io/install.sh | sh -
-pnpm install
-pnpm run build
-# install Python dependencies
-cd ..
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
-# run
-uv run python3 app/main.py
-```
-
-A Docker image can be built locally (it builds the UI too):
-
-```bash
-docker build -t metube .
-```
-
-When running the server from VS Code, downloads go to your user's Downloads folder
-(configured in `.vscode/launch.json`).
-
-## Checks
-
-CI runs these on every push, and they must pass. Build the UI first, and run the
-backend tests from the repository root.
-
-```bash
-# from ui/
-pnpm run lint
-pnpm exec ng test --watch=false
-
-# from the repository root
+# backend
 uv sync --frozen --group dev
 uv run pytest app/tests/
+
+# frontend
+cd ui
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm exec ng test --watch=false
+pnpm run build
+
+# run it (serves the built UI on http://localhost:8081)
+cd ..
+uv run python app/main.py
 ```
 
-## Documentation
+Build the production image from source with `docker compose up -d --build`.
 
-Documentation lives in three places, and a change goes where its kind of content
-lives:
+Icons: edit and run `uv run scripts/make_icons.py`.
 
-- **[README.md](README.md)** — what MeTube is, the quick start, and the environment
-  variable reference: one table row per variable, a sentence or two at most. A new
-  environment variable gets its row in the same pull request that adds it. The README
-  is also the Docker Hub page, which caps it at 25,000 bytes, so anything that needs
-  more room goes in the wiki and is linked from the row.
-- **The [wiki](https://github.com/alexta69/metube/wiki)** — guides, recipes,
-  integrations, and troubleshooting. GitHub wikis don't take pull requests: to add or
-  fix a page, open an issue with the text, and it will be added with attribution.
-- **This file** — how to contribute and build.
+## Pull requests
+
+- One change per pull request, with tests, and a sensible default rather than a
+  new setting where possible.
+- `main` publishes a new image on every push, so a pull request must be ready to
+  ship as merged. CI runs the tests, the linter, the builds and a vulnerability scan.

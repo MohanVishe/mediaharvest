@@ -10,3 +10,7 @@ downloads
 .devcontainer
 .venv
 .pnpm-store
+docs
+scripts
+install.sh
+install.ps1

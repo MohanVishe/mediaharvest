@@ -1,24 +1,27 @@
-# Run this fork locally: docker compose up -d --build   then open http://localhost:8081
+# MediaHarvest. Start:  docker compose up -d     then open http://localhost:8081
+#
+# `up` pulls the published image. To build it from this folder's source
+# instead:  docker compose up -d --build
 #
 # Safe defaults on purpose:
-# - The port is published on 127.0.0.1 only. MeTube has no login, so on
-#   0.0.0.0 anyone on the same Wi-Fi could use it and read your downloads.
-#   To use it from your phone, put an authenticating reverse proxy in front
-#   (https://github.com/alexta69/metube/wiki/Reverse-proxy-configurations).
-# - Per-download yt-dlp options stay off: they allow running commands.
-# - Downloads go to METUBE_DOWNLOADS (set it in .env), default ./downloads.
+# - The port is published on 127.0.0.1, this computer only. MediaHarvest has
+#   no login, so on 0.0.0.0 anyone on the same Wi-Fi could use it and read
+#   your downloads. For other devices, put a reverse proxy with a login in
+#   front (README, "Use it from your phone").
+# - Per-download yt-dlp options stay off: they can run commands.
+# - Settings live in .env (copy .env.example).
 services:
-  metube:
+  mediaharvest:
+    image: ghcr.io/mohanvishe/mediaharvest:${MEDIAHARVEST_TAG:-latest}
     build: .
-    image: metube-fork:local
-    container_name: metube
+    container_name: mediaharvest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${METUBE_PORT:-8081}:8081"
+      - "127.0.0.1:${MEDIAHARVEST_PORT:-8081}:8081"
     volumes:
-      - ${METUBE_DOWNLOADS:-./downloads}:/downloads
+      - "${MEDIAHARVEST_DOWNLOADS:-./downloads}:/downloads"
     environment:
-      PUID: "1000"
-      PGID: "1000"
+      PUID: ${MEDIAHARVEST_UID:-1000}
+      PGID: ${MEDIAHARVEST_GID:-1000}
       ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
       DEFAULT_THEME: "auto"

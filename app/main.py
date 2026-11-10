@@ -483,7 +483,7 @@ def _log_refusal(what, origin, sec_fetch_site, hosts):
     host, forwarded_host = hosts
     log.warning(
         'Refused cross-origin %s from %s: it was addressed to Host %s%s. If %s is where you '
-        'open MeTube, a reverse proxy in front of it is rewriting the Host header; have it '
+        'open MediaHarvest, a reverse proxy in front of it is rewriting the Host header; have it '
         'pass the original one (in nginx: proxy_set_header Host $http_host), or add that '
         'address to CORS_ALLOWED_ORIGINS. If it is a bookmarklet or extension you use, add '
         'its origin to CORS_ALLOWED_ORIGINS.',
@@ -513,7 +513,7 @@ async def cross_origin_guard(request, handler):
                 }
             raise web.HTTPForbidden(
                 reason='Cross-origin request not allowed', headers=headers,
-                text=f'MeTube refused this request from {origin}. '
+                text=f'MediaHarvest refused this request from {origin}. '
                      'Add that origin to CORS_ALLOWED_ORIGINS to allow it.')
     return await handler(request)
 

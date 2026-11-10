@@ -238,7 +238,7 @@ describe('App', () => {
     await Promise.resolve();
     TestBed.inject(ApplicationRef).tick();
     const boxes = Array.from(
-      fixture.nativeElement.querySelectorAll('input[placeholder^="Enter video"]') as NodeListOf<HTMLInputElement>,
+      fixture.nativeElement.querySelectorAll('input[placeholder^="Paste a video"]') as NodeListOf<HTMLInputElement>,
     );
     expect(boxes.length).toBe(2);
     expect(boxes.every((box) => !box.disabled)).toBe(true);
@@ -733,12 +733,13 @@ describe('App', () => {
   });
 
   describe('download options come from the server catalog', () => {
+    // The type is a row of radio buttons sharing one name: counted once.
     const fieldNames = (fixture: { nativeElement: HTMLElement }) =>
       Array.from(
         fixture.nativeElement.querySelectorAll<HTMLElement>(
           '[name=downloadType],[name=codec],[name=format],[name=quality],[name=audioTags],[name=subtitleLanguage],[name=subtitleMode]',
         ),
-      ).map(el => el.getAttribute('name'));
+      ).map(el => el.getAttribute('name')).filter((name, i, all) => name !== all[i - 1]);
 
     const select = (fixture: { nativeElement: HTMLElement }, name: string) =>
       fixture.nativeElement.querySelector<HTMLSelectElement>(`select[name=${name}]`);
@@ -815,18 +816,17 @@ describe('App', () => {
     it('shows the fields each type carries, in a fixed order', async () => {
       const fixture = TestBed.createComponent(App);
       const app = fixture.componentInstance;
+      // Codec sits under Advanced Options, after the main row.
       const expected: Record<string, string[]> = {
-        video: ['downloadType', 'codec', 'format', 'quality'],
+        video: ['downloadType', 'format', 'quality', 'codec'],
         audio: ['downloadType', 'format', 'quality', 'audioTags'],
         captions: ['downloadType', 'format', 'subtitleLanguage', 'subtitleMode'],
         thumbnail: ['downloadType', 'format'],
       };
       await render(fixture);
       for (const [type, names] of Object.entries(expected)) {
-        // Picked in the Type dropdown, as a user would.
-        const typeSelect = select(fixture, 'downloadType')!;
-        typeSelect.selectedIndex = Array.from(typeSelect.options).findIndex(o => o.textContent?.trim().toLowerCase() === type);
-        typeSelect.dispatchEvent(new Event('change'));
+        // Picked with the type buttons, as a user would.
+        (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(`#download-type-${type}`)!.click();
         await render(fixture);
         expect(app.downloadType).toBe(type);
         expect(fieldNames(fixture), type).toEqual(names);

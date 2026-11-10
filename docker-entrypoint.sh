@@ -32,7 +32,7 @@ run_supervised() {
         exit_code=$?
         trap - TERM INT
         if [ "$exit_code" -eq 42 ]; then
-            echo "MeTube requested yt-dlp update restart (exit 42)"
+            echo "MediaHarvest requested yt-dlp update restart (exit 42)"
             do_upgrade || true
             continue
         fi
@@ -65,11 +65,11 @@ if [ `id -u` -eq 0 ] && [ `id -g` -eq 0 ]; then
     fi
     echo "Starting BgUtils POT Provider"
     gosu "${PUID}":"${PGID}" bgutil-pot server >/tmp/bgutil-pot.log 2>&1 &
-    echo "Running MeTube as user ${PUID}:${PGID}"
+    echo "Running MediaHarvest as user ${PUID}:${PGID}"
     run_supervised gosu "${PUID}":"${PGID}" python3 app/main.py
     exit $?
 else
-    echo "User set by docker; running MeTube as `id -u`:`id -g`"
+    echo "User set by docker; running MediaHarvest as `id -u`:`id -g`"
     disable_nightly_for_non_root
     echo "Starting BgUtils POT Provider"
     bgutil-pot server >/tmp/bgutil-pot.log 2>&1 &

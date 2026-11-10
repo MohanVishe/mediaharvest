@@ -9,7 +9,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { DownloadsService, ProbeFormat, ProbePayload } from '../services/downloads.service';
+import { of } from 'rxjs';
+import { DownloadsService, ProbeFormat, ProbePayload, ProbeResult } from '../services/downloads.service';
 import { FormatCatalog, FormatOption, Option } from '../interfaces';
 
 /** What the picker closes with: the streams picked plus how to save them. */
@@ -287,6 +288,8 @@ export class FormatPickerComponent implements OnInit {
 
   // Set by the opener through NgbModalRef.componentInstance.
   payload!: ProbePayload;
+  // The link preview's lookup of the same URL, so the picker opens at once.
+  prefetched: ProbeResult | null = null;
   catalog: FormatCatalog | null = null;
   initialTab: 'video' | 'audio' = 'video';
   audioTags = 'with_cover';
@@ -321,8 +324,7 @@ export class FormatPickerComponent implements OnInit {
 
   ngOnInit(): void {
     this.readCatalog();
-    this.downloads
-      .probe(this.payload)
+    (this.prefetched ? of(this.prefetched) : this.downloads.probe(this.payload))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
         this.loading = false;

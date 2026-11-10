@@ -74,5 +74,8 @@
         }
       </tbody>
     </table>
+    @if (downloads.queue.size === 0) {
+      <p class="empty-hint">Nothing is downloading. Paste a link above and press <strong>Download</strong>.</p>
+    }
   </div>
 }

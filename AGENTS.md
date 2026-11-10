@@ -1,73 +1,24 @@
 # Agent Guidelines
 
-## Project scope — read this before planning a feature
+MediaHarvest: a self-hosted web app that downloads video and music with
+yt-dlp. Paste a link, see every format it offers, pick one, get the file.
 
-MeTube's contract is: give it a URL, it runs yt-dlp well, and correct files appear.
-The maintainer holds a deliberate line on what belongs inside that contract, and PRs
-on the wrong side of it are declined **regardless of code quality**. Check your plan
-against this line before writing any code.
+## Scope
 
-**In scope — improving the write itself:**
-
-- Features that make the file yt-dlp writes at download time come out more correct,
-  using only data the extractor already provides (e.g. filling a missing album-artist
-  tag from the extractor's own metadata).
-- Surfacing functionality yt-dlp itself owns and maintains as first-class UI options
-  (e.g. a SponsorBlock toggle that just passes yt-dlp postprocessor params).
-- Download queue, subscriptions, output templates, and UI improvements to the
-  download workflow.
-
-**Out of scope — managing files after they exist:**
-
-- Tag editors, metadata dialogs, or any workflow that rewrites files after the
-  download has finished. This holds even for slimmed-down versions.
-- Lookups against external metadata services (iTunes, Deezer, MusicBrainz, etc.).
-  More broadly: any new dependency on a third-party API, or new network egress from
-  self-hosted instances, beyond what yt-dlp itself performs.
-- Library organization: moving/renaming existing files into Artist/Album layouts,
-  watch-folder processing, and similar media-manager features. Dedicated tools
-  (beets, MusicBrainz Picard, Lidarr) do this properly; the README points users
-  to them.
-
-**Corollaries that shape borderline PRs:**
-
-- Site-specific intelligence (parsing playlist-ID prefixes, URL path conventions,
-  and other platform internals) is extractor work and belongs upstream in yt-dlp,
-  not re-implemented here — it silently breaks when the platform changes and
-  MeTube would own the breakage.
-- Prefer enriching yt-dlp's info dict and letting its existing pipeline
-  (FFmpegMetadata etc.) do the writing, over adding custom per-format tag-writing
-  code to MeTube.
-- Supplemental processing must never fail a download that otherwise succeeded:
-  warn and continue, don't raise.
-- Keep feature scope minimal on first submission. A hardcoded sensible default
-  beats a configuration surface; follow-ups can add options when users actually
-  ask. PRs that bundle several "reasonable next steps" invite rejection of the
-  whole.
-
-If a feature idea fails this test, the accepted alternative is usually documentation
-on pairing MeTube with the right dedicated tool — a wiki guide, or a pointer in the
-README.
+- In scope: anything that makes choosing and getting the right file easier
+  (formats, quality, size, subtitles, covers, lyrics, tags) and anything that
+  makes running it easier and safer (Docker image, installers, defaults).
+- Out of scope: a media library or player, accounts, cloud features, and
+  anything that needs a server outside the user's own machine, except the
+  site being downloaded from and optional lookups the user turns on (LRCLIB).
+- Keep the default install safe: port on 127.0.0.1, per-download yt-dlp
+  options off, pinned and checksummed binaries in the image.
 
 ## Documentation: where content goes
 
-The README is synced verbatim to Docker Hub, which rejects descriptions over
-**25,000 bytes** (CI checks `wc -c README.md`). Rather than trimming prose to fit,
-each kind of content has one home:
-
-- **README.md** — what MeTube is, the quick start, and the environment variable
-  reference: **one table row per variable**, a sentence or two at most. A variable
-  that needs more explanation gets a section in a wiki guide, linked from its row.
-  No free-text paragraphs in the configuration section. A PR that adds an env var
-  adds its row in the same diff.
-- **Wiki** (<https://github.com/alexta69/metube/wiki>, a separate git repository:
-  `https://github.com/alexta69/metube.wiki.git`) — guides, concepts, recipes,
-  integrations, and troubleshooting. Explanations of behavior go here.
-- **CONTRIBUTING.md** — the scope summary for humans, the feature request policy,
-  and building and testing locally.
-
-Links in README.md must be absolute URLs: on Docker Hub, relative links break. If the
-README passes 15,000 bytes, something in it belongs in the wiki.
+- `README.md`: what it does, install, everyday use, security. Short.
+- `docs/CONFIGURATION.md`: every environment variable and yt-dlp option.
+- Code comments: the why, next to the code.
 
 ## Tech stack
 
@@ -91,34 +42,18 @@ uv run python -m compileall -q app
 uv run pytest app/tests/
 ```
 
-All of these run in CI (`.github/workflows/main.yml`) on every push to master and must pass.
+All of these run in CI (`.github/workflows/ci.yml`) on every push and pull
+request, and must pass. Run them in the dev container (`.devcontainer/`).
 
 The backend tests need no frontend build and can run from the repo root or
 from `app/`: `app/tests/conftest.py` points `BASE_DIR` at a stand-in UI
 directory before `main` is imported.
 
-Every non-markdown push to master builds multi-arch Docker images and cuts a dated
-release the same day. **Master is continuously released** — a PR must be
-release-ready exactly as merged; there is no stabilization window for follow-up
-fixes.
+Every non-markdown push to `main` publishes a new image to
+`ghcr.io/mohanvishe/mediaharvest:latest`, so `main` must always be releasable.
+A `v*` tag publishes that version and a GitHub Release.
 
-## Commit messages
-
-A commit that resolves an issue must close it, with a GitHub closing keyword in
-parentheses at the end of the subject line:
-
-```
-fix: stop metadata probes from writing playlist sidecar files (closes #1040)
-```
-
-Because master is the default branch and is released on every push, the issue
-closes at the moment the fix ships, and keeps a permanent link to the commit that
-fixed it. A bare `(#1040)` is only a reference — and reads as a pull-request
-number — so it does not count; the keyword is what closes the issue.
-
-Auto-closing leaves only a commit stub on the issue, which is not an answer to
-whoever reported it. Post an explanatory comment as well: what the cause was, what
-changed, and anything the reporter needs to do differently.
+## Code style
 
 Follow `.editorconfig`:
 - Python: 4-space indent
