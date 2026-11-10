@@ -54,6 +54,45 @@ download can't warn you in time.
 Downloads that stop part-way resume by themselves; there is nothing to set. See
 "Video, including very long ones" in the [README](../README.md).
 
+### Compressing videos
+
+Compression is chosen per download (**Compress** and **Resolution**) or from a
+video's row in Completed. While it runs it needs up to the video's own size free
+on the same drive. How it works and what the levels do:
+[HOW-IT-WORKS.md](HOW-IT-WORKS.md#making-videos-smaller).
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `COMPRESS_GPU` | `auto` | `auto` uses an NVIDIA graphics card for the **Any device** level when the container can reach one; `off` always uses the processor. |
+
+**Using an NVIDIA graphics card.** The container needs access to it. The
+installers add this by themselves when they find a card Docker can use. With
+Docker Compose, start with [docker-compose.gpu.yml](../docker-compose.gpu.yml)
+as well:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+or add `COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml` to `.env`
+(on Windows separate the two with `;`). With `docker run`, add
+`--gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,video`. Docker
+Desktop on Windows passes the card through by itself; on Linux install the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+The log says which one compression uses (`Compression uses the NVIDIA GPU for
+H.264`).
+
+**From the command line**, to compress a file in the download folder and keep
+the original:
+
+```bash
+docker exec mediaharvest python3 /app/app/compress.py medium "/downloads/video.mkv" --output "/downloads/video.small.mkv"
+```
+
+Leave out `--output` to replace the file in place. The level is `light`,
+`medium`, `strong` or `compatible` (Any device, which always writes an `.mp4`);
+add `--max-height 720` (or 1080, 480, 360) to limit the resolution.
+
 ## File naming
 
 Templates use [yt-dlp's output template syntax](https://github.com/yt-dlp/yt-dlp/blob/master/README.md#output-template). How MediaHarvest applies them is explained in [Output templates](https://github.com/alexta69/metube/wiki/Output-templates).

@@ -17,6 +17,9 @@ yt-dlp. Paste a link, see every format it offers, pick one, get the file.
 ## Documentation: where content goes
 
 - `README.md`: what it does, install, everyday use, security. Short.
+- `docs/FEATURES.md`: every option on the page, for people who don't read code.
+- `docs/HOW-IT-WORKS.md`: the flow from link to file, compression, and which
+  file does what, in plain words.
 - `docs/CONFIGURATION.md`: every environment variable and yt-dlp option.
 - Code comments: the why, next to the code.
 
@@ -72,6 +75,9 @@ app/subscriptions.py — Channel/playlist subscription manager
 app/state_store.py   — JSON-based persistent storage with atomic writes
 app/format_catalog.py — The download options (types, codecs, formats, qualities, labels, defaults)
 app/dl_formats.py    — Maps those options onto yt-dlp format selectors and options
+app/format_probe.py  — The link preview and the All formats picker (read-only)
+app/media_extras.py  — Extra yt-dlp postprocessors: disk check, smaller audio, lyrics, compression
+app/compress.py      — Makes videos smaller with ffmpeg (levels, per-stream command, GPU)
 app/tests/           — pytest tests (asyncio_mode=auto)
 ui/src/app/          — Angular standalone components (no NgModules)
 ```

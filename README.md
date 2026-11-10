@@ -42,11 +42,40 @@ work, through [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 - Disk space is checked before a download starts, counting the room needed to
   merge video and audio (about twice the final size).
 
+**Smaller videos, if you want them.** Pick a **Compress** level and the video is
+re-encoded after it downloads, on your own computer, with open-source tools
+(ffmpeg). You can also compress a finished video later from **Completed**.
+Tested on a 138-hour YouTube video (51.3 GB at 720p):
+
+| Level | Size | How it looks | Plays on |
+|---|---|---|---|
+| Light | 24% smaller | the same to the eye | current phones, computers, browsers |
+| Medium | 51% smaller | very close; fine detail a little softer | current phones, computers, browsers |
+| Strong | 64% smaller | 480p, for talks and audiobooks | current phones, computers, browsers |
+| Any device | about 20% smaller | close to the original | every TV, phone and computer (MP4) |
+
+Add a **Resolution** limit (1080p down to 360p) to make it smaller still.
+Subtitle tracks, every sound track and chapters are kept. Any device uses an
+NVIDIA graphics card when there is one. The other levels take about 4 minutes
+per hour of video on a 12-core computer. If a video wouldn't get at least 5%
+smaller, the original is kept. Details:
+[Making videos smaller](docs/FEATURES.md#making-videos-smaller-compress).
+
 **And more:** whole playlists and channels, subscriptions that fetch new uploads,
 clips by start and end time, sponsor-segment removal, splitting by chapters,
 captions or thumbnails on their own.
 
+![Completed downloads with their compression results, and the Compress menu: Resolution, then Light, Medium, Strong or Any device](docs/screenshot-completed.jpg)
+
 ![The format picker: every stream of the video with its quality, codec, bitrate and size](docs/screenshot-picker.jpg)
+
+## Guides
+
+| Guide | For |
+|---|---|
+| [Features](docs/FEATURES.md) | Every option on the page, explained simply, with which to pick |
+| [How it works](docs/HOW-IT-WORKS.md) | What happens from link to file, how compression works, and which code does what |
+| [Configuration](docs/CONFIGURATION.md) | Settings for whoever runs it: folders, file names, ports, the graphics card |
 
 ## Install
 
@@ -88,6 +117,10 @@ docker run -d --name mediaharvest --restart unless-stopped \
 Images are built for amd64 and arm64. `latest` follows `main`, and every build
 also gets a dated tag to pin.
 
+**NVIDIA graphics card?** The installers find it and let MediaHarvest use it to
+compress. With Docker Compose, add
+[docker-compose.gpu.yml](docker-compose.gpu.yml) (its first lines say how).
+
 ### Update, stop, remove
 
 In the install folder (or the repository):
@@ -106,8 +139,13 @@ sites working.
 1. Paste a link. A card shows the video and how many formats it has.
 2. Pick **Video**, **Audio**, **Captions** or **Thumbnail**, and the format below.
    Then press **Download**, or open **All formats** to choose the exact stream.
-3. Finished files appear under **Completed**. Click one to save it to the device
-   you're using; they're also in the download folder.
+3. Watch it in **Downloading**. If the connection drops or the link expires, it
+   waits and carries on by itself.
+4. Finished files appear under **Completed**. Click one to save it to the device
+   you're using; they're also in the download folder. The compress button on a
+   video's row makes it smaller.
+
+Every option is explained in [docs/FEATURES.md](docs/FEATURES.md).
 
 **Which audio format?** Keep *Original* unless a player can't open it. For an
 older car stereo or iPod, pick MP3. For Apple devices, M4A. To save space, pick Opus
@@ -127,6 +165,26 @@ the YouTube app.
 
 Every setting (download folders, file names, yt-dlp options, HTTPS) is in
 [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Paste a link] --> B[Preview and formats]
+    B --> C[Choose]
+    C --> D[Download with yt-dlp]
+    D -->|stopped| D
+    D --> E[Join with ffmpeg]
+    E --> F[Compress, if chosen]
+    F --> G[Completed and your folder]
+```
+
+The web page (`ui/`) sends your choice to a small Python server (`app/`). The
+server runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) to download and
+[ffmpeg](https://ffmpeg.org) to join, convert and compress, and keeps the page
+updated live. A download that stops starts again from where it was. Every
+step, and which file does it, is explained without jargon in
+[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
 ## Security and privacy
 
