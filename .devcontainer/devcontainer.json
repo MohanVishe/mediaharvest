@@ -1,0 +1,27 @@
+{
+  "name": "metube",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-venv,target=/workspace/.venv,type=volume",
+    "source=${localWorkspaceFolderBasename}-node-modules,target=/workspace/ui/node_modules,type=volume",
+    "source=uv-cache,target=/home/vscode/.cache/uv,type=volume"
+  ],
+  "containerEnv": {
+    "DOWNLOAD_DIR": "/workspace/.downloads",
+    "STATE_DIR": "/workspace/.downloads/.metube",
+    "BASE_DIR": "/workspace"
+  },
+  "forwardPorts": [8081],
+  "postCreateCommand": "sudo chown vscode /home/vscode/.cache && sudo chown -R vscode /workspace/.venv /workspace/ui/node_modules /home/vscode/.cache/uv && uv sync --frozen --group dev && cd ui && pnpm install --frozen-lockfile",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarshall.ruff", "angular.ng-template"]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Run this fork locally: docker compose up -d --build   then open http://localhost:8081
+#
+# Safe defaults on purpose:
+# - The port is published on 127.0.0.1 only. MeTube has no login, so on
+#   0.0.0.0 anyone on the same Wi-Fi could use it and read your downloads.
+#   To use it from your phone, put an authenticating reverse proxy in front
+#   (https://github.com/alexta69/metube/wiki/Reverse-proxy-configurations).
+# - Per-download yt-dlp options stay off: they allow running commands.
+# - Downloads go to METUBE_DOWNLOADS (set it in .env), default ./downloads.
+services:
+  metube:
+    build: .
+    image: metube-fork:local
+    container_name: metube
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${METUBE_PORT:-8081}:8081"
+    volumes:
+      - ${METUBE_DOWNLOADS:-./downloads}:/downloads
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
+      DEFAULT_THEME: "auto"

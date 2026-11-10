@@ -53,3 +53,11 @@ Thumbs.db
 
 __pycache__
 .venv
+
+# Local dev downloads (dev container)
+/.downloads
+
+# Fork: local run
+/downloads
+.env
+/.pnpm-store
