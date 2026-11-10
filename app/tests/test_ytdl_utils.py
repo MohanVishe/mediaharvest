@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import ytdl
+from media_extras import DiskSpaceCheckPP, LyricsPP
 from state_store import to_json_compatible
 from ytdl import (
     Download,
@@ -158,16 +159,34 @@ class AlbumArtistRegistrationTests(unittest.TestCase):
         metadata_preprocessor, = metadata_pre_call.args
         self.assertIsInstance(metadata_preprocessor, MusicMetadataPreProcessor)
         self.assertEqual(metadata_pre_call.kwargs, {'when': 'pre_process'})
-        self.assertEqual(fake_ydl.add_post_processor.call_count, 2)
+        disk_call = fake_ydl.add_post_processor.call_args_list[2]
+        self.assertIsInstance(disk_call.args[0], DiskSpaceCheckPP)
+        self.assertEqual(disk_call.kwargs, {'when': 'before_dl'})
+        self.assertEqual(fake_ydl.add_post_processor.call_count, 3)
 
-    def test_video_download_does_not_register_postprocessor(self):
+    def test_audio_download_with_lyrics_registers_lyrics_postprocessor(self):
+        download = _make_test_download()
+        download.info.download_type = 'audio'
+        download.info.lyrics = True
+        fake_ydl = MagicMock()
+
+        with patch('ytdl._ConfinedYoutubeDL', return_value=fake_ydl):
+            download._make_youtube_dl({'quiet': True})
+
+        lyrics_calls = [c for c in fake_ydl.add_post_processor.call_args_list
+                        if isinstance(c.args[0], LyricsPP)]
+        self.assertEqual(len(lyrics_calls), 1)
+        self.assertEqual(lyrics_calls[0].kwargs, {'when': 'post_process'})
+
+    def test_video_download_registers_only_the_disk_space_check(self):
         download = _make_test_download()
         fake_ydl = MagicMock()
 
         with patch('ytdl._ConfinedYoutubeDL', return_value=fake_ydl):
             download._make_youtube_dl({'quiet': True})
 
-        fake_ydl.add_post_processor.assert_not_called()
+        fake_ydl.add_post_processor.assert_called_once()
+        self.assertIsInstance(fake_ydl.add_post_processor.call_args.args[0], DiskSpaceCheckPP)
 
 
 class SanitizePathComponentTests(unittest.TestCase):

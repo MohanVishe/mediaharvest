@@ -58,7 +58,7 @@ def _normalize_subtitle_language(language: str) -> str:
     return language or format_catalog.choice_default("captions", "subtitle_language")
 
 
-def get_format(download_type: str, codec: str, format: str, quality: str) -> str:
+def get_format(download_type: str, codec: str, format: str, quality: str, format_id: str = '') -> str:
     """
     Returns yt-dlp format selector.
 
@@ -67,6 +67,9 @@ def get_format(download_type: str, codec: str, format: str, quality: str) -> str
       codec (str): selected video codec (auto, h264, h265, av1, vp9)
       format (str): selected output format/profile for type
       quality (str): selected quality
+      format_id (str): streams picked in the format picker ("137+251",
+        "251"), already validated; tried first, with the form's selector
+        as the fallback if the site no longer offers them
 
     Raises:
       Exception: unknown type/format
@@ -74,6 +77,14 @@ def get_format(download_type: str, codec: str, format: str, quality: str) -> str
     Returns:
       str: yt-dlp format selector
     """
+    selector = _get_format(download_type, codec, format, quality)
+    format_id = (format_id or '').strip()
+    if format_id and download_type in ('video', 'audio') and not selector.startswith(format_id + '/'):
+        return f"{format_id}/{selector}"
+    return selector
+
+
+def _get_format(download_type: str, codec: str, format: str, quality: str) -> str:
     download_type = (download_type or "video").strip().lower()
     format = (format or "any").strip().lower()
     codec = (codec or "auto").strip().lower()
@@ -126,6 +137,8 @@ def get_opts(
     subtitle_language: str = "en",
     subtitle_mode: str = "prefer_manual",
     audio_tags: str = "with_cover",
+    format_id: str = "",
+    video_subtitles: str = "none",
 ) -> dict:
     """
     Returns extra yt-dlp options/postprocessors.
@@ -147,6 +160,28 @@ def get_opts(
     opts = copy.deepcopy(ytdl_opts)
 
     postprocessors = []
+
+    if download_type == "video":
+        # Streams picked by hand are merged into the container asked for;
+        # the form's selectors pick mp4 streams instead, so need no remux.
+        if (format_id or "").strip() and format in ("mp4", "ios"):
+            opts["merge_output_format"] = "mp4"
+        if video_subtitles in ("en", "en_all"):
+            opts["writesubtitles"] = True
+            opts["writeautomaticsub"] = True
+            # Machine captions are cut down to English in _ConfinedYoutubeDL,
+            # so "all" means every written subtitle plus English.
+            opts["subtitleslangs"] = ["en.*"] if video_subtitles == "en" else ["all", "-live_chat"]
+            opts["subtitlesformat"] = "srt/vtt/best"
+            # webm cannot carry srt; mp4 when the streams allow, else mkv.
+            if format == "any":
+                opts.setdefault("merge_output_format", "mp4/mkv")
+            postprocessors.append(
+                {"key": "FFmpegSubtitlesConvertor", "format": "srt", "when": "before_dl"}
+            )
+            # Embedded as selectable tracks; the .srt files stay beside the
+            # video for players (TVs) that only read side files.
+            postprocessors.append({"key": "FFmpegEmbedSubtitle", "already_have_subtitle": True})
 
     if download_type == "audio":
         if audio_tags not in format_catalog.choice_ids("audio", "audio_tags"):

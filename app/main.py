@@ -21,6 +21,7 @@ from watchfiles import awatch
 
 import bg_tasks
 import format_catalog
+import format_probe
 from ytdl import DownloadQueueNotifier, DownloadQueue, Download
 from download_options import DownloadOptions
 from subscriptions import SubscriptionManager, SubscriptionNotifier, SubscriptionInfo, browse_playlist, coerce_optional_bool
@@ -1014,6 +1015,23 @@ def parse_download_options(post: dict) -> tuple[str, DownloadOptions]:
 
     _require_configured_presets(ytdl_options_presets)
 
+    format_id = _str_field(post, 'format_id', '').strip()
+    if format_id and not format_probe.is_valid_format_id(format_id):
+        raise web.HTTPBadRequest(reason="'format_id' must be one or two yt-dlp format ids joined by '+'")
+    if format_id and download_type not in ('video', 'audio'):
+        raise web.HTTPBadRequest(reason="'format_id' is only supported for video and audio downloads")
+    lyrics = _bool_field(post, 'lyrics', False) and download_type == 'audio'
+    video_subtitles = 'none'
+    if download_type == 'video':
+        video_subtitles = str(
+            _str_field(post, 'video_subtitles', None)
+            or format_catalog.choice_default('video', 'subtitles')
+        ).strip().lower()
+        try:
+            format_catalog.check_video_subtitles(video_subtitles)
+        except format_catalog.InvalidOption as exc:
+            raise web.HTTPBadRequest(reason=str(exc)) from exc
+
     try:
         format_catalog.check_subtitle_language(subtitle_language)
         format_catalog.check_subtitle_mode(subtitle_mode)
@@ -1075,6 +1093,9 @@ def parse_download_options(post: dict) -> tuple[str, DownloadOptions]:
         clip_start=clip_start,
         clip_end=clip_end,
         video_password=video_password,
+        format_id=format_id,
+        lyrics=lyrics,
+        video_subtitles=video_subtitles,
     )
 
 
@@ -1124,6 +1145,29 @@ async def browse(request):
     log.info("Received request to browse playlist (item limit %s)", playlist_item_limit)
     status = await browse_playlist(
         config, url, playlist_item_limit, ytdl_options_presets, ytdl_options_overrides
+    )
+    return web.Response(text=serializer.encode(status))
+
+
+@routes.post(config.URL_PREFIX + 'probe')
+async def probe(request):
+    """Extract one video's formats for the format picker; queues nothing."""
+    post = await _read_json_request(request)
+    url = str(post.get('url') or '').strip()
+    if not url:
+        raise web.HTTPBadRequest(reason="missing 'url'")
+    ytdl_options_presets = _parse_ytdl_options_presets(post)
+    _require_configured_presets(ytdl_options_presets)
+    ytdl_options_overrides = _parse_ytdl_options_overrides(
+        post.get('ytdl_options_overrides'),
+        enabled=config.ALLOW_YTDL_OPTIONS_OVERRIDES,
+    )
+    video_password = post.get('video_password') or None
+    if video_password is not None and not isinstance(video_password, str):
+        raise web.HTTPBadRequest(reason='video_password must be a string')
+    log.info("Received request to probe formats")
+    status = await format_probe.probe_formats(
+        config, url, ytdl_options_presets, ytdl_options_overrides, video_password
     )
     return web.Response(text=serializer.encode(status))
 
@@ -1541,6 +1585,7 @@ async def add_cors(request):
 
 app.router.add_route('OPTIONS', config.URL_PREFIX + 'add', add_cors)
 app.router.add_route('OPTIONS', config.URL_PREFIX + 'browse', add_cors)
+app.router.add_route('OPTIONS', config.URL_PREFIX + 'probe', add_cors)
 app.router.add_route('OPTIONS', config.URL_PREFIX + 'cancel-add', add_cors)
 app.router.add_route('OPTIONS', config.URL_PREFIX + 'retry', add_cors)
 app.router.add_route('OPTIONS', config.URL_PREFIX + 'subscribe', add_cors)

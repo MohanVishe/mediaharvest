@@ -30,6 +30,8 @@ import { SpeedPipe } from './pipes';
 import {
   ToastContainerComponent,
   PlaylistBrowserComponent,
+  FormatPickerComponent,
+  FormatPickerResult,
   SubscriptionsSectionComponent,
   BatchImportComponent,
   DownloadingSectionComponent,
@@ -77,6 +79,7 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   formatOptions: FormatOption[] = [];
   qualities: Option[] = [];
   audioTagsOptions: Option[] = [];
+  videoSubtitleOptions: Option[] = [];
   subtitleLanguages: Option[] = [];
   subtitleModes: Option[] = [];
   downloadType: string;
@@ -90,6 +93,9 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   splitByChapters: boolean;
   sponsorblock: boolean;
   audioTags: string;
+  // Fork: lyrics for audio, subtitles embedded into videos.
+  lyrics: boolean;
+  videoSubtitles: string;
   chapterTemplate: string;
   clipStart = '';
   clipEnd = '';
@@ -173,6 +179,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     this.splitByChapters = this.settings.get('metube_split_chapters') === 'true';
     this.sponsorblock = this.settings.get('metube_sponsorblock') === 'true';
     this.audioTags = this.settings.get('metube_audio_tags');
+    this.lyrics = this.settings.get('metube_lyrics') === 'true';
+    this.videoSubtitles = this.settings.get('metube_video_subtitles');
     // Will be set from backend configuration, use empty string as placeholder
     this.chapterTemplate = this.settings.get('metube_chapter_template') || '';
     this.clipStart = this.settings.get('metube_clip_start') || '';
@@ -506,6 +514,15 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     this.settings.set('metube_sponsorblock', this.sponsorblock ? 'true' : 'false');
   }
 
+  lyricsChanged() {
+    this.settings.set('metube_lyrics', this.lyrics ? 'true' : 'false');
+  }
+
+  videoSubtitlesChanged(value: string) {
+    this.videoSubtitles = value;
+    this.settings.set('metube_video_subtitles', this.videoSubtitles);
+  }
+
   splitByChaptersChanged() {
     this.settings.set('metube_split_chapters', this.splitByChapters ? 'true' : 'false');
   }
@@ -584,7 +601,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     const fields = 2
       + (type.codec ? 1 : 0)
       + (this.qualities.length ? 1 : 0)
-      + (type.audio_tags ? 1 : 0)
+      + (type.audio_tags ? 2 : 0)
+      + (type.subtitles ? 1 : 0)
       + (type.subtitle_language ? 1 : 0)
       + (type.subtitle_mode ? 1 : 0);
     if (fields >= 4) {
@@ -626,6 +644,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     const audio = this.downloadTypes.find(t => t.audio_tags);
     const captions = this.downloadTypes.find(t => t.subtitle_mode || t.subtitle_language);
     this.audioTagsOptions = audio?.audio_tags?.options ?? [];
+    const video = this.downloadTypes.find(t => t.subtitles);
+    this.videoSubtitleOptions = video?.subtitles?.options ?? [];
     this.subtitleLanguages = captions?.subtitle_language?.options ?? [];
     this.subtitleModes = captions?.subtitle_mode?.options ?? [];
 
@@ -656,6 +676,10 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     const audio = this.downloadTypes.find(t => t.audio_tags);
     if (audio?.audio_tags) {
       this.audioTags = this.pick(audio.audio_tags, this.audioTags);
+    }
+    const video = this.downloadTypes.find(t => t.subtitles);
+    if (video?.subtitles) {
+      this.videoSubtitles = this.pick(video.subtitles, this.videoSubtitles);
     }
     const captions = this.downloadTypes.find(t => t.subtitle_mode || t.subtitle_language);
     if (captions?.subtitle_mode) {
@@ -729,6 +753,9 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
       splitByChapters: overrides.splitByChapters ?? this.splitByChapters,
       sponsorblock: overrides.sponsorblock ?? this.sponsorblock,
       audioTags: overrides.audioTags ?? this.audioTags,
+      lyrics: overrides.lyrics ?? this.lyrics,
+      videoSubtitles: overrides.videoSubtitles ?? this.videoSubtitles,
+      formatId: overrides.formatId ?? '',
       chapterTemplate: overrides.chapterTemplate ?? this.chapterTemplate,
       subtitleLanguage: overrides.subtitleLanguage ?? this.subtitleLanguage,
       subtitleMode: overrides.subtitleMode ?? this.subtitleMode,
@@ -797,6 +824,52 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     };
     ref.result.then(
       (urls: string[]) => this.queueBrowsedEntries(urls),
+      () => { /* dismissed */ },
+    );
+  }
+
+  // Probe one video and let the user pick its exact streams (resolution,
+  // codec, audio track) with their sizes; the pick is queued as one download.
+  chooseFormat() {
+    const url = (this.addUrl ?? '').trim();
+    if (!url) {
+      return;
+    }
+    const template = this.buildAddPayload({ url });
+    if (!this.validateAddSettings(template)) {
+      return;
+    }
+    const ref = this.modal.open(FormatPickerComponent, { size: 'xl', scrollable: true });
+    const picker = ref.componentInstance as FormatPickerComponent;
+    picker.payload = {
+      url,
+      ytdlOptionsPresets: template.ytdlOptionsPresets,
+      ytdlOptionsOverrides: template.ytdlOptionsOverrides,
+      videoPassword: template.videoPassword,
+    };
+    picker.catalog = this.catalog;
+    picker.initialTab = this.downloadType === 'audio' ? 'audio' : 'video';
+    picker.audioTags = this.audioTags;
+    picker.lyrics = this.lyrics;
+    picker.videoSubtitles = this.videoSubtitles;
+    if (this.downloadType === 'video' && this.format !== 'ios') {
+      picker.container = this.format;
+    }
+    ref.result.then(
+      (pick: FormatPickerResult) => {
+        if (!pick) return;
+        this.addDownload({
+          url,
+          downloadType: pick.downloadType,
+          codec: 'auto',
+          formatId: pick.formatId,
+          format: pick.format,
+          quality: pick.quality,
+          audioTags: pick.audioTags ?? this.audioTags,
+          lyrics: pick.lyrics ?? false,
+          videoSubtitles: pick.videoSubtitles ?? this.videoSubtitles,
+        });
+      },
       () => { /* dismissed */ },
     );
   }

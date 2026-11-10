@@ -12,7 +12,7 @@ import dl_formats
 import format_catalog
 from format_catalog import CATALOG, InvalidOption, resolve_selection
 
-_CHOICE_FIELDS = ('codec', 'format', 'audio_tags', 'subtitle_mode', 'subtitle_language')
+_CHOICE_FIELDS = ('codec', 'format', 'audio_tags', 'subtitle_mode', 'subtitle_language', 'subtitles')
 
 
 def _choices():
@@ -109,7 +109,7 @@ class TestResolveSelection:
     def test_the_message_lists_the_allowed_values(self):
         with pytest.raises(InvalidOption) as exc:
             resolve_selection('audio', 'auto', 'm4a', '320')
-        assert str(exc.value) == "quality must be one of ['128', '192', 'best'] for format m4a"
+        assert str(exc.value) == "quality must be one of ['128', '192', '96', 'best'] for format m4a"
 
 
 def test_per_field_checks():

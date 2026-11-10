@@ -25,6 +25,8 @@ export interface DownloadTypeOption extends Option {
   format: Choice<FormatOption>;
   codec?: Choice;
   audio_tags?: Choice;
+  // Video only (fork): subtitles embedded into the video.
+  subtitles?: Choice;
   subtitle_mode?: Choice;
   // Suggestions; any language tag is accepted.
   subtitle_language?: Choice;

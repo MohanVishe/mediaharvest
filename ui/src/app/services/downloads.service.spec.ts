@@ -94,6 +94,38 @@ describe('DownloadsService', () => {
     req.flush({ status: 'ok' });
   });
 
+  it('add() leaves format_id and lyrics out unless set', () => {
+    service.add(basePayload()).subscribe();
+    const req = httpMock.expectOne('add');
+    expect(req.request.body).not.toHaveProperty('format_id');
+    expect(req.request.body).not.toHaveProperty('lyrics');
+    req.flush({ status: 'ok' });
+  });
+
+  it('add() sends the picked format_id, and lyrics for audio only', () => {
+    service.add({ ...basePayload(), formatId: '137+251', lyrics: true }).subscribe();
+    const video = httpMock.expectOne('add');
+    expect(video.request.body).toEqual(expect.objectContaining({ format_id: '137+251' }));
+    expect(video.request.body).not.toHaveProperty('lyrics');
+    video.flush({ status: 'ok' });
+
+    service.add({ ...basePayload(), downloadType: 'audio', formatId: '251', lyrics: true }).subscribe();
+    const audio = httpMock.expectOne('add');
+    expect(audio.request.body).toEqual(expect.objectContaining({ format_id: '251', lyrics: true }));
+    audio.flush({ status: 'ok' });
+  });
+
+  it('probe() posts the url and options', () => {
+    service.probe({ url: 'https://example.com/v', ytdlOptionsPresets: ['p'], ytdlOptionsOverrides: '' }).subscribe();
+    const req = httpMock.expectOne('probe');
+    expect(req.request.body).toEqual({
+      url: 'https://example.com/v',
+      ytdl_options_presets: ['p'],
+      ytdl_options_overrides: '',
+    });
+    req.flush({ status: 'ok', formats: [] });
+  });
+
   it('add() sends clip_start and clip_end when set', () => {
     service
       .add({

@@ -25,6 +25,7 @@ from dl_formats import get_format, get_opts, merge_ytdl_option_layers
 from download_options import DownloadOptions
 import format_catalog
 from music_metadata import MusicMetadataPreProcessor
+from media_extras import DiskSpaceCheckPP, LyricsPP, attach_audio_bitrate_pp
 from datetime import datetime
 from state_store import AtomicJsonStore, from_json_compatible, read_legacy_shelf, to_json_compatible
 from subscriptions import _entry_id, annotate_feed_entry, is_channel_extraction, unexpected_ytdl_error
@@ -367,6 +368,39 @@ class _ConfinedYoutubeDL(yt_dlp.YoutubeDL):
                 )
         return filename
 
+    # Video subtitles (fork): which machine captions may be picked, and
+    # whether a failed subtitle fetch may fail the download.
+    #
+    # YouTube offers its speech-recognition track machine-translated into
+    # ~150 languages. "English + other languages" means every subtitle a
+    # person wrote, plus English (written, or machine-made when there is
+    # none) — not 150 machine translations, which would also trip YouTube's
+    # rate limit. yt-dlp picks subtitles before any pre_process
+    # postprocessor runs, so the filter has to sit here.
+    auto_caption_filter: Optional[re.Pattern] = None
+    subtitles_best_effort = False
+
+    def process_subtitles(self, video_id, normal_subtitles, automatic_captions):
+        if self.auto_caption_filter is not None and automatic_captions:
+            automatic_captions = {
+                lang: caps for lang, caps in automatic_captions.items()
+                if self.auto_caption_filter.fullmatch(lang)
+            }
+        return super().process_subtitles(video_id, normal_subtitles, automatic_captions)
+
+    def _write_subtitles(self, info_dict, filename):
+        if not self.subtitles_best_effort or self.params.get('ignoreerrors') is True:
+            return super()._write_subtitles(info_dict, filename)
+        # yt-dlp fails the whole download when one subtitle cannot be fetched
+        # (YouTube answers HTTP 429 to bursts of them). For a video download
+        # the subtitles are extras: warn and keep going.
+        previous = self.params.get('ignoreerrors')
+        self.params['ignoreerrors'] = True
+        try:
+            return super()._write_subtitles(info_dict, filename)
+        finally:
+            self.params['ignoreerrors'] = previous
+
 
 # Regex matching yt-dlp output-template field references, e.g. ``%(title)s``
 # or ``%(playlist_index)03d``.  Built from yt-dlp's own ``STR_FORMAT_RE_TMPL``
@@ -534,6 +568,9 @@ _DOWNLOAD_INFO_DEFAULTS: dict[str, Any] = {
     "sponsorblock": False,
     "audio_tags": "with_cover",
     "video_password": None,
+    "format_id": "",
+    "lyrics": False,
+    "video_subtitles": "none",
     "chapter_template": "",
     "subtitle_language": "en",
     "subtitle_mode": "prefer_manual",
@@ -583,6 +620,9 @@ class DownloadInfo:
         sponsorblock=False,
         audio_tags='with_cover',
         video_password=None,
+        format_id='',
+        lyrics=False,
+        video_subtitles='none',
     ):
         self.id = id if len(custom_name_prefix) == 0 else f'{custom_name_prefix}.{id}'
         self.title = title if len(custom_name_prefix) == 0 else f'{custom_name_prefix}.{title}'
@@ -611,6 +651,9 @@ class DownloadInfo:
         self.sponsorblock = sponsorblock
         self.audio_tags = audio_tags
         self.video_password = video_password
+        self.format_id = format_id
+        self.lyrics = lyrics
+        self.video_subtitles = video_subtitles
         self.chapter_template = chapter_template
         self.subtitle_language = subtitle_language
         self.subtitle_mode = subtitle_mode
@@ -706,6 +749,9 @@ _PERSISTED_DOWNLOAD_FIELDS = (
     "split_by_chapters",
     "sponsorblock",
     "audio_tags",
+    "format_id",
+    "lyrics",
+    "video_subtitles",
     "chapter_template",
     "subtitle_language",
     "subtitle_mode",
@@ -794,6 +840,7 @@ class Download:
             getattr(info, 'codec', 'auto'),
             format,
             quality,
+            format_id=getattr(info, 'format_id', ''),
         )
         self.ytdl_opts = get_opts(
             getattr(info, 'download_type', 'video'),
@@ -804,6 +851,8 @@ class Download:
             subtitle_language=getattr(info, 'subtitle_language', 'en'),
             subtitle_mode=getattr(info, 'subtitle_mode', 'prefer_manual'),
             audio_tags=getattr(info, 'audio_tags', 'with_cover'),
+            format_id=getattr(info, 'format_id', ''),
+            video_subtitles=getattr(info, 'video_subtitles', 'none'),
         )
         if "impersonate" in self.ytdl_opts:
             self.ytdl_opts["impersonate"] = yt_dlp.networking.impersonate.ImpersonateTarget.from_str(self.ytdl_opts["impersonate"])
@@ -939,6 +988,16 @@ class Download:
                 ),
                 when='pre_process',
             )
+            attach_audio_bitrate_pp(ydl, getattr(self.info, 'format', ''), getattr(self.info, 'quality', 'best'))
+            if getattr(self.info, 'lyrics', False):
+                ydl.add_post_processor(LyricsPP(ydl), when='post_process')
+        if (getattr(self.info, 'download_type', '') == 'video'
+                and getattr(self.info, 'video_subtitles', 'none') in ('en', 'en_all')):
+            ydl.auto_caption_filter = re.compile(r'en')
+            ydl.subtitles_best_effort = True
+        if getattr(self.info, 'download_type', '') in ('video', 'audio'):
+            ydl.add_post_processor(
+                DiskSpaceCheckPP(ydl, (self.temp_dir, self.download_dir)), when='before_dl')
         return ydl
 
     def _download(self):
@@ -988,6 +1047,15 @@ class Download:
                 'format': self.format,
                 'socket_timeout': 30,
                 'ignore_no_formats_error': True,
+                # Long videos (multi-hour streams, lectures) are many GB over
+                # one connection: retry harder than yt-dlp's default 10 and
+                # fetch HLS/DASH fragments in parallel. yt-dlp resumes .part
+                # files, so a Retry continues where a failed run stopped.
+                # YTDL_OPTIONS, presets and overrides below still win.
+                'retries': 30,
+                'fragment_retries': 30,
+                'file_access_retries': 10,
+                'concurrent_fragment_downloads': 4,
                 **self.ytdl_opts,
                 # paths and outtmpl are dicts of independent keys. A user value
                 # (YTDL_OPTIONS, a preset, an override) is merged into MeTube's

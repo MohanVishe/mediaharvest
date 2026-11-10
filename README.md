@@ -1,5 +1,10 @@
 # MeTube
 
+> **This is metube-plus, a fork of [alexta69/metube](https://github.com/alexta69/metube).** It adds a
+> format picker that lists every stream a video offers, real bitrate choices for smaller music files,
+> optional lyrics, English subtitles by default, safeguards for long videos, and a checksum-pinned image.
+> See **[FORK.md](FORK.md)** for the features and how to run it. The rest of this README is upstream's.
+
 ![Build Status](https://github.com/alexta69/metube/actions/workflows/main.yml/badge.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/alexta69/metube.svg)
 

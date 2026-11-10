@@ -33,6 +33,51 @@ export interface AddDownloadPayload {
   clipStart?: string;
   clipEnd?: string;
   videoPassword?: string;
+  // Streams picked in the format picker, e.g. "137+251"; empty for the form's choice.
+  formatId?: string;
+  // Audio only: look up lyrics and write them into the file.
+  lyrics?: boolean;
+  // Video only: none, en, en_all.
+  videoSubtitles?: string;
+}
+
+export interface ProbePayload {
+  url: string;
+  ytdlOptionsPresets: string[];
+  ytdlOptionsOverrides: string;
+  videoPassword?: string;
+}
+
+// One stream of a probed video (app/format_probe.py: format_row).
+export interface ProbeFormat {
+  format_id: string;
+  kind: 'video' | 'audio' | 'muxed';
+  ext: string;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
+  vcodec: string;
+  acodec: string;
+  dynamic_range: string;
+  tbr: number | null;
+  vbr: number | null;
+  abr: number | null;
+  asr: number | null;
+  audio_channels: number | null;
+  language: string;
+  note: string;
+  protocol: string;
+  size: number | null;
+  size_kind: 'exact' | 'approx' | 'estimate' | null;
+}
+
+export interface ProbeResult extends Status {
+  title?: string;
+  uploader?: string;
+  duration?: number | null;
+  thumbnail?: string;
+  is_live?: boolean;
+  formats?: ProbeFormat[];
 }
 
 export interface BrowsePayload {
@@ -197,7 +242,24 @@ export class DownloadsService {
     if (cs) body['clip_start'] = cs;
     if (ce) body['clip_end'] = ce;
     if (payload.videoPassword) body['video_password'] = payload.videoPassword;
+    if (payload.formatId) body['format_id'] = payload.formatId;
+    if (payload.lyrics && payload.downloadType === 'audio') body['lyrics'] = true;
+    if (payload.videoSubtitles && payload.downloadType === 'video') {
+      body['video_subtitles'] = payload.videoSubtitles;
+    }
     return this.http.post<Status>('add', body).pipe(
+      catchError(this.handleHTTPError)
+    );
+  }
+
+  public probe(payload: ProbePayload): Observable<ProbeResult> {
+    const body: Record<string, unknown> = {
+      url: payload.url,
+      ytdl_options_presets: payload.ytdlOptionsPresets,
+      ytdl_options_overrides: payload.ytdlOptionsOverrides,
+    };
+    if (payload.videoPassword) body['video_password'] = payload.videoPassword;
+    return this.http.post<ProbeResult>('probe', body).pipe(
       catchError(this.handleHTTPError)
     );
   }

@@ -165,6 +165,33 @@ class ParseDownloadOptionsTests(unittest.TestCase):
         self.assertIs(parsed.auto_start, True)
         self.assertIs(parsed.split_by_chapters, False)
 
+    def test_format_id_from_the_picker(self):
+        self.assertEqual(self._parse(format_id=" 137+251 ").format_id, "137+251")
+        self.assertEqual(self._parse().format_id, "")
+        for bad in ("best/worst", "137+251+140", "bestvideo[height<=720]", 137):
+            with self.subTest(bad=bad):
+                self._rejects(format_id=bad)
+        self._rejects(format_id="251", download_type="thumbnail", format="jpg")
+
+    def test_video_subtitles(self):
+        self.assertEqual(self._parse().video_subtitles, "en")  # catalog default
+        self.assertEqual(self._parse(video_subtitles="en_all").video_subtitles, "en_all")
+        self.assertEqual(self._parse(video_subtitles="none").video_subtitles, "none")
+        self._rejects(video_subtitles="klingon")
+        audio = main.parse_download_options({
+            "url": "https://example.com/v", "download_type": "audio", "format": "auto",
+            "quality": "best", "video_subtitles": "en",
+        })[1]
+        self.assertEqual(audio.video_subtitles, "none")
+
+    def test_lyrics_only_for_audio(self):
+        self.assertIs(self._parse(lyrics=True).lyrics, False)
+        parsed = main.parse_download_options({
+            "url": "https://example.com/v", "download_type": "audio", "format": "auto",
+            "quality": "best", "lyrics": "true",
+        })[1]
+        self.assertIs(parsed.lyrics, True)
+
     def test_unrecognised_booleans_are_refused(self):
         for field in ("auto_start", "split_by_chapters", "sponsorblock"):
             for raw in ("yes please", 2, [], {}):

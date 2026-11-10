@@ -40,6 +40,12 @@ class DownloadOptions:
     sponsorblock: bool = False
     audio_tags: str = 'with_cover'
     video_password: Optional[str] = field(default=None, repr=False)
+    # Streams picked in the format picker (format_probe), e.g. "137+251".
+    format_id: str = ''
+    # Audio only: look up lyrics (LRCLIB) and write them into the file.
+    lyrics: bool = False
+    # Video only: none, en, en_all (format_catalog: video 'subtitles').
+    video_subtitles: str = 'none'
 
     def __post_init__(self):
         # Own copies, so neither the caller's list/dict nor a later mutation

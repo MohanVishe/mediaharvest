@@ -68,17 +68,26 @@ CATALOG: dict = {
                 _video_format('mp4', 'MP4'),
                 _video_format('ios', 'iOS Compatible'),
             ]),
+            # Fork: subtitles embedded into the video as selectable tracks
+            # (and kept beside it as .srt). English is on by default.
+            'subtitles': _choice('en', _options(
+                ('none', 'None'),
+                ('en', 'English'),
+                ('en_all', 'English + other languages'),
+            )),
         },
         {
             'id': 'audio',
             'text': 'Audio',
-            # Auto is listed first, to match Video, but switching to Audio
-            # still selects M4A, the default from before Auto existed.
-            'format': _choice('m4a', [
-                _audio_format('auto', 'Auto'),
-                _audio_format('m4a', 'M4A', '192', '128'),
+            # Fork: Original is the default. It keeps the stream the site
+            # serves (YouTube: Opus ~130-160 kbps) without re-encoding, which
+            # is both the best quality and the smallest file. The bitrates
+            # below it trade quality for size (AudioBitratePP re-encodes).
+            'format': _choice('auto', [
+                _audio_format('auto', 'Original (no re-encode)'),
+                _audio_format('opus', 'OPUS', '128', '96', '64'),
+                _audio_format('m4a', 'M4A (AAC)', '192', '128', '96'),
                 _audio_format('mp3', 'MP3', '320', '192', '128'),
-                _audio_format('opus', 'OPUS'),
                 _audio_format('wav', 'WAV', tags=False),
                 _audio_format('flac', 'FLAC'),
             ]),
@@ -242,6 +251,10 @@ def resolve_selection(download_type_id: str, codec: str, format_id: str, quality
 
 def check_audio_tags(audio_tags: str) -> None:
     _check('audio_tags', audio_tags, download_type('audio')['audio_tags'])
+
+
+def check_video_subtitles(video_subtitles: str) -> None:
+    _check('video_subtitles', video_subtitles, download_type('video')['subtitles'])
 
 
 def check_subtitle_mode(subtitle_mode: str) -> None:

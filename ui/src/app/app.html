@@ -135,6 +135,11 @@
                 </button>
                 <div ngbDropdownMenu>
                   <button type="button" ngbDropdownItem
+                    (click)="chooseFormat()"
+                    [disabled]="!addUrl || !addUrl.trim()">
+                    Choose format&hellip;
+                  </button>
+                  <button type="button" ngbDropdownItem
                     (click)="browsePlaylist()"
                     [disabled]="!addUrl || !addUrl.trim()">
                     Browse&hellip;
@@ -261,6 +266,35 @@
                 [disabled]="addInProgress || subscribeInProgress || downloads.loading || !tagsSupported()">
                 @for (t of audioTagsOptions; track t.id) {
                   <option [ngValue]="t.id">{{ t.text }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div [class]="optionColumnClass()">
+            <div class="input-group">
+              <span class="input-group-text help-title" ngbPopover="Looks the song up on LRCLIB (lrclib.net) and writes the lyrics into the file; synced lyrics are also saved as a .lrc file beside it. Sends the artist, title and length to lrclib.net." triggers="click" autoClose="outside" container="body">Lyrics</span>
+              <select class="form-select"
+                name="lyrics"
+                [ngModel]="lyrics && tagsSupported()"
+                (ngModelChange)="lyrics = $event; lyricsChanged()"
+                [disabled]="addInProgress || subscribeInProgress || downloads.loading || !tagsSupported()">
+                <option [ngValue]="false">Off</option>
+                <option [ngValue]="true">Add lyrics</option>
+              </select>
+            </div>
+          </div>
+          }
+          @if (currentType()?.subtitles) {
+          <div [class]="optionColumnClass()">
+            <div class="input-group">
+              <span class="input-group-text help-title" ngbPopover="Subtitles embedded into the video as tracks you can switch in the player, and kept beside it as .srt files. English uses written subtitles, or YouTube's automatic ones when there are none; other languages are the written ones the video has." triggers="click" autoClose="outside" container="body">Subtitles</span>
+              <select class="form-select"
+                name="videoSubtitles"
+                [ngModel]="videoSubtitles"
+                (ngModelChange)="videoSubtitlesChanged($event)"
+                [disabled]="addInProgress || subscribeInProgress || downloads.loading">
+                @for (s of videoSubtitleOptions; track s.id) {
+                  <option [ngValue]="s.id">{{ s.text }}</option>
                 }
               </select>
             </div>
