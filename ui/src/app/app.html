@@ -329,6 +329,38 @@
             </div>
           </div>
           }
+          @if (currentType()?.compress) {
+          <div [class]="optionColumnClass()">
+            <div class="input-group">
+              <span class="input-group-text help-title" ngbPopover="Makes the video smaller after it downloads, on this computer. Light looks the same and is about 20% smaller; Medium is about half the size; Strong (480p) is about a third. These use AV1, which current phones, computers and browsers play. Any device makes an MP4 that plays anywhere, including older TVs and iPhones, about 20% smaller. Subtitles and every sound track are kept. You can also compress a video later from Completed." triggers="click" autoClose="outside" container="body">Compress</span>
+              <select class="form-select"
+                name="compress"
+                [ngModel]="compress"
+                (ngModelChange)="compressChanged($event)"
+                [disabled]="addInProgress || subscribeInProgress || downloads.loading">
+                @for (c of compressOptions; track c.id) {
+                  <option [ngValue]="c.id">{{ c.text }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          }
+          @if (currentType()?.compress_height && compress && compress !== 'off') {
+          <div [class]="optionColumnClass()">
+            <div class="input-group">
+              <span class="input-group-text help-title" ngbPopover="The compressed video is made no taller than this. A video is never made larger than it already is." triggers="click" autoClose="outside" container="body">Resolution</span>
+              <select class="form-select"
+                name="compressHeight"
+                [ngModel]="compressHeight"
+                (ngModelChange)="compressHeightChanged($event)"
+                [disabled]="addInProgress || subscribeInProgress || downloads.loading">
+                @for (h of compressHeightOptions; track h.id) {
+                  <option [ngValue]="h.id">{{ h.text }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          }
           @if (currentType()?.subtitle_language) {
           <div [class]="optionColumnClass()">
             <div class="input-group">

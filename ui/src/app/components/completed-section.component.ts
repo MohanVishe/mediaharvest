@@ -1,4 +1,5 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -13,6 +14,7 @@ import {
   faCheckCircle,
   faChevronDown,
   faChevronRight,
+  faCompress,
   faCopy,
   faDownload,
   faExternalLinkAlt,
@@ -23,7 +25,14 @@ import {
   faTimesCircle,
   faTrashAlt,
 } from '@fortawesome/free-solid-svg-icons';
-import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
+import {
+  NgbDropdown,
+  NgbDropdownItem,
+  NgbDropdownMenu,
+  NgbDropdownToggle,
+  NgbProgressbar,
+  NgbTooltip,
+} from '@ng-bootstrap/ng-bootstrap';
 import { Observable, from, merge, mergeMap, tap } from 'rxjs';
 import { actionError } from '../action-result';
 import {
@@ -32,8 +41,8 @@ import {
   formatCodecLabel,
   formatQualityLabel,
 } from '../catalog-labels';
-import { Download, Status } from '../interfaces';
-import { FileSizePipe } from '../pipes';
+import { Download, Option, Status } from '../interfaces';
+import { EtaPipe, FileSizePipe } from '../pipes';
 import { ADD_REQUEST_CONCURRENCY, DownloadsService } from '../services/downloads.service';
 import { SettingsStore } from '../services/settings-store.service';
 import { ToastService } from '../services/toast.service';
@@ -50,9 +59,17 @@ import { ItemCheckboxComponent } from './slave-checkbox.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    DecimalPipe,
+    FormsModule,
     FontAwesomeModule,
     NgbTooltip,
+    NgbDropdown,
+    NgbDropdownToggle,
+    NgbDropdownMenu,
+    NgbDropdownItem,
+    NgbProgressbar,
     FileSizePipe,
+    EtaPipe,
     SelectAllCheckboxComponent,
     ItemCheckboxComponent,
   ],
@@ -87,6 +104,7 @@ export class CompletedSectionComponent {
   readonly faDownload = faDownload;
   readonly faExternalLinkAlt = faExternalLinkAlt;
   readonly faRedoAlt = faRedoAlt;
+  readonly faCompress = faCompress;
   readonly faShareNodes = faShareNodes;
   readonly faSortAmountDown = faSortAmountDown;
   readonly faSortAmountUp = faSortAmountUp;
@@ -141,6 +159,49 @@ export class CompletedSectionComponent {
       this.toasts.error(error || fallbackMsg);
     }
     this.cdr.markForCheck();
+  }
+
+  // The compress presets the server offers (format_catalog: video 'compress').
+  compressPresets(): Option[] {
+    const video = catalogTypes(this.downloads.formats).find((t) => t.id === 'video');
+    return (video?.compress?.options ?? []).filter((o) => o.id !== 'off');
+  }
+
+  // The resolution picked in the Compress menu, shared by every row's menu.
+  menuHeight = 'keep';
+
+  compressHeights(): Option[] {
+    const video = catalogTypes(this.downloads.formats).find((t) => t.id === 'video');
+    return video?.compress_height?.options ?? [];
+  }
+
+  presetName(id: string | undefined, height?: number | null): string {
+    if (!id) {
+      return '';
+    }
+    const name = this.compressPresets().find((p) => p.id === id)?.text ?? id.charAt(0).toUpperCase() + id.slice(1);
+    return height ? `${name}, ${height}p` : name;
+  }
+
+  canCompress(download: Download): boolean {
+    return download.status === 'finished'
+      && download.download_type === 'video'
+      && !!download.filename
+      && download.compression?.state !== 'running';
+  }
+
+  savedPercent(download: Download): number {
+    const c = download.compression;
+    return c?.original_size && c.size !== undefined ? (1 - c.size / c.original_size) * 100 : 0;
+  }
+
+  compressDownload(key: string, download: Download, preset: string, height = 'keep') {
+    this.downloads.compress(key, preset, height).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((status) => {
+      if (status.status === 'error') {
+        this.toasts.error(`Could not compress ${download.title}: ${status.msg}`);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   retryDownload(key: string, download: Download) {

@@ -1,3 +1,15 @@
+// Compressing a finished video (app/compress.py, DownloadQueue.compress).
+export interface Compression {
+  state: 'running' | 'done' | 'kept' | 'error';
+  preset: string;
+  // The resolution it was limited to (720 means 720p), or none.
+  height?: number | null;
+  percent?: number;
+  eta?: number | null;
+  original_size?: number;
+  size?: number;
+  msg?: string;
+}
 
 export interface Download {
   id: string;
@@ -34,4 +46,10 @@ export interface Download {
   error?: string;
   deleting?: boolean;
   chapter_files?: { filename: string, size: number }[];
+  // Video only: compress preset chosen at download (off, light, medium, strong).
+  compress?: string;
+  // With compress: keep, or a height such as 720.
+  compress_height?: string;
+  // Set while and after the finished video is compressed (app/compress.py).
+  compression?: Compression | null;
 }

@@ -66,6 +66,23 @@ if [ "${MEDIAHARVEST_PULL:-1}" != "0" ]; then
   echo "Downloading MediaHarvest..."
   docker compose pull
 fi
+
+# An NVIDIA GPU makes the "Any device" compression faster. Use it only when
+# Docker can really reach it; otherwise the CPU does the work.
+if [ "${MEDIAHARVEST_GPU:-1}" != "0" ] && command -v nvidia-smi >/dev/null 2>&1 \
+  && docker run --rm --gpus all --entrypoint true "$IMAGE" >/dev/null 2>&1; then
+  cat >> compose.yaml <<'EOF'
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,video"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+EOF
+  echo "NVIDIA graphics card found: MediaHarvest will use it to compress videos."
+fi
 docker compose up -d
 
 printf 'Starting'

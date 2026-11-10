@@ -75,6 +75,25 @@ CATALOG: dict = {
                 ('en', 'English'),
                 ('en_all', 'English + other languages'),
             )),
+            # Fork: re-encode the finished video to save space (app/compress.py,
+            # where the sizes below were measured). Off by default.
+            # 'detail' is the longer line shown in the Completed menu.
+            'compress': _choice('off', [
+                {'id': 'off', 'text': 'Off'},
+                {'id': 'light', 'text': 'Light', 'detail': 'About 20% smaller, looks the same'},
+                {'id': 'medium', 'text': 'Medium', 'detail': 'About half the size'},
+                {'id': 'strong', 'text': 'Strong', 'detail': '480p, about a third of the size'},
+                {'id': 'compatible', 'text': 'Any device',
+                 'detail': 'MP4 that plays on any TV, phone or computer, about 20% smaller'},
+            ]),
+            # Fork: limit the compressed video's resolution too (never up).
+            'compress_height': _choice('keep', _options(
+                ('keep', 'Original'),
+                ('1080', '1080p'),
+                ('720', '720p'),
+                ('480', '480p'),
+                ('360', '360p'),
+            )),
         },
         {
             'id': 'audio',
@@ -255,6 +274,25 @@ def check_audio_tags(audio_tags: str) -> None:
 
 def check_video_subtitles(video_subtitles: str) -> None:
     _check('video_subtitles', video_subtitles, download_type('video')['subtitles'])
+
+
+def check_compress(compress: str) -> None:
+    _check('compress', compress, download_type('video')['compress'])
+
+
+def check_compress_height(compress_height: str) -> None:
+    _check('compress_height', compress_height, download_type('video')['compress_height'])
+
+
+def compress_name(compress: str) -> str:
+    """The name a compress level is shown with, e.g. 'Any device'."""
+    option = _find(download_type('video')['compress'], compress)
+    return option['text'] if option else compress
+
+
+def compress_max_height(compress_height: str):
+    """The pixel height a compress_height choice limits to, or None."""
+    return int(compress_height) if str(compress_height).isdigit() else None
 
 
 def check_subtitle_mode(subtitle_mode: str) -> None:

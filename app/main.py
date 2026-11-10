@@ -1031,6 +1031,26 @@ def parse_download_options(post: dict) -> tuple[str, DownloadOptions]:
             format_catalog.check_video_subtitles(video_subtitles)
         except format_catalog.InvalidOption as exc:
             raise web.HTTPBadRequest(reason=str(exc)) from exc
+    compress = 'off'
+    if download_type == 'video':
+        compress = str(
+            _str_field(post, 'compress', None)
+            or format_catalog.choice_default('video', 'compress')
+        ).strip().lower()
+        try:
+            format_catalog.check_compress(compress)
+        except format_catalog.InvalidOption as exc:
+            raise web.HTTPBadRequest(reason=str(exc)) from exc
+    compress_height = 'keep'
+    if compress != 'off':
+        compress_height = str(
+            _str_field(post, 'compress_height', None)
+            or format_catalog.choice_default('video', 'compress_height')
+        ).strip().lower()
+        try:
+            format_catalog.check_compress_height(compress_height)
+        except format_catalog.InvalidOption as exc:
+            raise web.HTTPBadRequest(reason=str(exc)) from exc
 
     try:
         format_catalog.check_subtitle_language(subtitle_language)
@@ -1096,6 +1116,8 @@ def parse_download_options(post: dict) -> tuple[str, DownloadOptions]:
         format_id=format_id,
         lyrics=lyrics,
         video_subtitles=video_subtitles,
+        compress=compress,
+        compress_height=compress_height,
     )
 
 
@@ -1193,6 +1215,30 @@ async def retry(request):
     # report per-id results for the caller to know which ones to remove.
     post = await _read_json_request(request)
     status = await dqueue.retry(_require_id(post))
+    return web.Response(text=serializer.encode(status), content_type='application/json')
+
+
+@routes.post(config.URL_PREFIX + 'compress')
+async def compress(request):
+    """Make a finished video in Completed smaller (app/compress.py). Replies
+    at once; progress and the result reach clients as 'completed' updates of
+    that row."""
+    post = await _read_json_request(request)
+    preset = _str_field(post, 'preset', '').strip().lower()
+    try:
+        format_catalog.check_compress(preset)
+    except format_catalog.InvalidOption as exc:
+        raise web.HTTPBadRequest(reason=str(exc)) from exc
+    if preset == 'off':
+        raise web.HTTPBadRequest(reason="'preset' must be light, medium, strong or compatible")
+    height = _str_field(post, 'height', 'keep').strip().lower() or 'keep'
+    try:
+        format_catalog.check_compress_height(height)
+    except format_catalog.InvalidOption as exc:
+        raise web.HTTPBadRequest(reason=str(exc)) from exc
+    id = _require_id(post)
+    status = await dqueue.compress(id, preset, format_catalog.compress_max_height(height))
+    log.info('Compress %s (%s, %s): %s', id, preset, height, status.get('msg') or status.get('status'))
     return web.Response(text=serializer.encode(status), content_type='application/json')
 
 

@@ -5,6 +5,8 @@
 export interface Option {
   id: string;
   text: string;
+  // A longer explanation, where the list has room for one.
+  detail?: string;
 }
 
 // One list of options for an /add field, with the value to preselect.
@@ -27,6 +29,9 @@ export interface DownloadTypeOption extends Option {
   audio_tags?: Choice;
   // Video only (fork): subtitles embedded into the video.
   subtitles?: Choice;
+  // Video only (fork): re-encode the finished video smaller.
+  compress?: Choice;
+  compress_height?: Choice;
   subtitle_mode?: Choice;
   // Suggestions; any language tag is accepted.
   subtitle_language?: Choice;

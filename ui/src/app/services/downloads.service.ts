@@ -39,6 +39,10 @@ export interface AddDownloadPayload {
   lyrics?: boolean;
   // Video only: none, en, en_all.
   videoSubtitles?: string;
+  // Video only: off, light, medium, strong, compatible.
+  compress?: string;
+  // With compress: keep, or a height such as 720.
+  compressHeight?: string;
 }
 
 export interface ProbePayload {
@@ -247,6 +251,12 @@ export class DownloadsService {
     if (payload.videoSubtitles && payload.downloadType === 'video') {
       body['video_subtitles'] = payload.videoSubtitles;
     }
+    if (payload.compress && payload.compress !== 'off' && payload.downloadType === 'video') {
+      body['compress'] = payload.compress;
+      if (payload.compressHeight && payload.compressHeight !== 'keep') {
+        body['compress_height'] = payload.compressHeight;
+      }
+    }
     return this.http.post<Status>('add', body).pipe(
       catchError(this.handleHTTPError)
     );
@@ -278,6 +288,14 @@ export class DownloadsService {
   public getPresets() {
     return this.http.get<{ presets: string[] }>('presets').pipe(
       catchError(() => of({ presets: [] }))
+    );
+  }
+
+  // Re-encode a finished video in Completed smaller; progress arrives as
+  // 'completed' updates of that row.
+  public compress(id: string, preset: string, height = 'keep') {
+    return this.http.post<Status>('compress', { id, preset, height }).pipe(
+      catchError(this.handleHTTPError)
     );
   }
 

@@ -46,6 +46,10 @@ class DownloadOptions:
     lyrics: bool = False
     # Video only: none, en, en_all (format_catalog: video 'subtitles').
     video_subtitles: str = 'none'
+    # Video only: re-encode smaller after download (compress.PRESETS), or off.
+    compress: str = 'off'
+    # With compress: keep, or a height to scale down to (1080, 720, 480, 360).
+    compress_height: str = 'keep'
 
     def __post_init__(self):
         # Own copies, so neither the caller's list/dict nor a later mutation

@@ -1,4 +1,4 @@
-import { KeyValuePipe } from '@angular/common';
+import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -36,6 +36,7 @@ import { ItemCheckboxComponent } from './slave-checkbox.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     KeyValuePipe,
+    DecimalPipe,
     FontAwesomeModule,
     NgbProgressbar,
     EtaPipe,

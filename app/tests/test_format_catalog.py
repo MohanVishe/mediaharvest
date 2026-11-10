@@ -12,7 +12,7 @@ import dl_formats
 import format_catalog
 from format_catalog import CATALOG, InvalidOption, resolve_selection
 
-_CHOICE_FIELDS = ('codec', 'format', 'audio_tags', 'subtitle_mode', 'subtitle_language', 'subtitles')
+_CHOICE_FIELDS = ('codec', 'format', 'audio_tags', 'subtitle_mode', 'subtitle_language', 'subtitles', 'compress', 'compress_height')
 
 
 def _choices():
@@ -199,3 +199,11 @@ def test_unknown_values_fall_back_to_the_catalog_defaults():
     assert dl_formats._normalize_subtitle_language('  ') == format_catalog.choice_default('captions', 'subtitle_language')
     opts = dl_formats.get_opts('audio', 'auto', 'mp3', 'best', {}, audio_tags='bogus')
     assert opts.get('writethumbnail') is True  # the default, With cover
+
+
+def test_every_compress_preset_explains_itself():
+    options = [o for o in format_catalog.download_type('video')['compress']['options'] if o['id'] != 'off']
+    assert {o['id'] for o in options} == {'light', 'medium', 'strong', 'compatible'}
+    for option in options:
+        assert option['detail'].strip(), option['id']
+        assert len(option['text']) <= 10, option['text']  # fits the narrow select

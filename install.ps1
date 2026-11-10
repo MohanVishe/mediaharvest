@@ -72,6 +72,25 @@ services:
             docker compose pull
             if ($LASTEXITCODE -ne 0) { Write-Host 'Could not download the image.' -ForegroundColor Red; return }
         }
+        # An NVIDIA GPU makes the "Any device" compression faster. Use it
+        # only when Docker can really reach it; otherwise the CPU does the work.
+        if ($env:MEDIAHARVEST_GPU -ne '0' -and (Get-Command nvidia-smi -ErrorAction SilentlyContinue)) {
+            docker run --rm --gpus all --entrypoint true $Image *> $null
+            if ($LASTEXITCODE -eq 0) {
+                $gpu = @"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,video"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+"@
+                [System.IO.File]::AppendAllText((Join-Path $Dir 'compose.yaml'), ($gpu -replace "`r`n", "`n") + "`n", $utf8)
+                Write-Host 'NVIDIA graphics card found: MediaHarvest will use it to compress videos.'
+            }
+        }
         docker compose up -d
         if ($LASTEXITCODE -ne 0) { Write-Host 'Could not start MediaHarvest.' -ForegroundColor Red; return }
     } finally {

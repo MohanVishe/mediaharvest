@@ -1280,3 +1280,72 @@ async def test_add_refuses_malformed_fields_with_400(mock_dqueue, field, value):
 async def test_browse_refuses_negative_item_limit(mock_dqueue):
     with pytest.raises(web.HTTPBadRequest):
         await main.browse(_json_request({"url": "https://example.com/list", "playlist_item_limit": -3}))
+
+
+@pytest.mark.asyncio
+async def test_add_passes_compress_for_video(mock_dqueue):
+    await main.add(_json_request(_valid_video_add_body(compress="Medium")))
+    options = mock_dqueue.add.await_args.args[1]
+    assert options.compress == "medium"
+
+
+@pytest.mark.asyncio
+async def test_add_compress_defaults_to_off_and_ignores_audio(mock_dqueue):
+    await main.add(_json_request(_valid_video_add_body()))
+    assert mock_dqueue.add.await_args.args[1].compress == "off"
+    mock_dqueue.add.reset_mock()
+    await main.add(_json_request(_valid_video_add_body(
+        download_type="audio", format="auto", compress="strong")))
+    assert mock_dqueue.add.await_args.args[1].compress == "off"
+
+
+@pytest.mark.asyncio
+async def test_add_rejects_unknown_compress(mock_dqueue):
+    with pytest.raises(web.HTTPBadRequest):
+        await main.add(_json_request(_valid_video_add_body(compress="tiny")))
+    mock_dqueue.add.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_compress_starts_on_a_completed_download(mock_dqueue):
+    mock_dqueue.compress = AsyncMock(return_value={"status": "ok"})
+    resp = await main.compress(_json_request({"id": "https://example.com/watch?v=1", "preset": "Strong"}))
+    assert json.loads(resp.text) == {"status": "ok"}
+    mock_dqueue.compress.assert_awaited_once_with("https://example.com/watch?v=1", "strong", None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [
+    {"id": "https://example.com/watch?v=1", "preset": "off"},
+    {"id": "https://example.com/watch?v=1", "preset": "tiny"},
+    {"id": "https://example.com/watch?v=1"},
+    {"preset": "light"},
+])
+async def test_compress_rejects_bad_requests(mock_dqueue, body):
+    mock_dqueue.compress = AsyncMock(return_value={"status": "ok"})
+    with pytest.raises(web.HTTPBadRequest):
+        await main.compress(_json_request(body))
+    mock_dqueue.compress.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_compress_takes_a_resolution(mock_dqueue):
+    mock_dqueue.compress = AsyncMock(return_value={"status": "ok"})
+    await main.compress(_json_request({"id": "u", "preset": "compatible", "height": "720"}))
+    mock_dqueue.compress.assert_awaited_once_with("u", "compatible", 720)
+
+
+@pytest.mark.asyncio
+async def test_compress_rejects_an_unknown_resolution(mock_dqueue):
+    mock_dqueue.compress = AsyncMock(return_value={"status": "ok"})
+    with pytest.raises(web.HTTPBadRequest):
+        await main.compress(_json_request({"id": "u", "preset": "light", "height": "999"}))
+    mock_dqueue.compress.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_add_passes_the_compress_resolution(mock_dqueue):
+    await main.add(_json_request(_valid_video_add_body(compress="light", compress_height="480")))
+    assert mock_dqueue.add.await_args.args[1].compress_height == "480"
+    await main.add(_json_request(_valid_video_add_body(compress_height="480")))
+    assert mock_dqueue.add.await_args.args[1].compress_height == "keep"  # compress is off

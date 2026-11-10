@@ -95,6 +95,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   qualities: Option[] = [];
   audioTagsOptions: Option[] = [];
   videoSubtitleOptions: Option[] = [];
+  compressOptions: Option[] = [];
+  compressHeightOptions: Option[] = [];
   subtitleLanguages: Option[] = [];
   subtitleModes: Option[] = [];
   downloadType: string;
@@ -111,6 +113,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   // Fork: lyrics for audio, subtitles embedded into videos.
   lyrics: boolean;
   videoSubtitles: string;
+  compress: string;
+  compressHeight: string;
   chapterTemplate: string;
   clipStart = '';
   clipEnd = '';
@@ -224,6 +228,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     this.audioTags = this.settings.get('metube_audio_tags');
     this.lyrics = this.settings.get('metube_lyrics') === 'true';
     this.videoSubtitles = this.settings.get('metube_video_subtitles');
+    this.compress = this.settings.get('metube_compress');
+    this.compressHeight = this.settings.get('metube_compress_height');
     // Will be set from backend configuration, use empty string as placeholder
     this.chapterTemplate = this.settings.get('metube_chapter_template') || '';
     this.clipStart = this.settings.get('metube_clip_start') || '';
@@ -566,6 +572,16 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     this.settings.set('metube_video_subtitles', this.videoSubtitles);
   }
 
+  compressChanged(value: string) {
+    this.compress = value;
+    this.settings.set('metube_compress', this.compress);
+  }
+
+  compressHeightChanged(value: string) {
+    this.compressHeight = value;
+    this.settings.set('metube_compress_height', this.compressHeight);
+  }
+
   splitByChaptersChanged() {
     this.settings.set('metube_split_chapters', this.splitByChapters ? 'true' : 'false');
   }
@@ -716,6 +732,7 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
       + (this.qualities.length ? 1 : 0)
       + (type.audio_tags ? 2 : 0)
       + (type.subtitles ? 1 : 0)
+      + (type.compress ? (this.compress && this.compress !== 'off' ? 2 : 1) : 0)
       + (type.subtitle_language ? 1 : 0)
       + (type.subtitle_mode ? 1 : 0);
     if (fields >= 4) {
@@ -759,6 +776,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     this.audioTagsOptions = audio?.audio_tags?.options ?? [];
     const video = this.downloadTypes.find(t => t.subtitles);
     this.videoSubtitleOptions = video?.subtitles?.options ?? [];
+    this.compressOptions = video?.compress?.options ?? [];
+    this.compressHeightOptions = video?.compress_height?.options ?? [];
     this.subtitleLanguages = captions?.subtitle_language?.options ?? [];
     this.subtitleModes = captions?.subtitle_mode?.options ?? [];
 
@@ -793,6 +812,12 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
     const video = this.downloadTypes.find(t => t.subtitles);
     if (video?.subtitles) {
       this.videoSubtitles = this.pick(video.subtitles, this.videoSubtitles);
+    }
+    if (video?.compress) {
+      this.compress = this.pick(video.compress, this.compress);
+    }
+    if (video?.compress_height) {
+      this.compressHeight = this.pick(video.compress_height, this.compressHeight);
     }
     const captions = this.downloadTypes.find(t => t.subtitle_mode || t.subtitle_language);
     if (captions?.subtitle_mode) {
@@ -868,6 +893,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
       audioTags: overrides.audioTags ?? this.audioTags,
       lyrics: overrides.lyrics ?? this.lyrics,
       videoSubtitles: overrides.videoSubtitles ?? this.videoSubtitles,
+      compress: overrides.compress ?? this.compress,
+      compressHeight: overrides.compressHeight ?? this.compressHeight,
       formatId: overrides.formatId ?? '',
       chapterTemplate: overrides.chapterTemplate ?? this.chapterTemplate,
       subtitleLanguage: overrides.subtitleLanguage ?? this.subtitleLanguage,
@@ -983,6 +1010,8 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
           audioTags: pick.audioTags ?? this.audioTags,
           lyrics: pick.lyrics ?? false,
           videoSubtitles: pick.videoSubtitles ?? this.videoSubtitles,
+          compress: this.compress,
+          compressHeight: this.compressHeight,
         });
       },
       () => { /* dismissed */ },

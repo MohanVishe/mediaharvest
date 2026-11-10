@@ -55,10 +55,13 @@
                     }
                   </span>
                 } @else {
-                  <ngb-progressbar height="1.5rem" [showValue]="!isIndeterminate(download.value)" [striped]="isIndeterminate(download.value)" [animated]="isIndeterminate(download.value)" type="success"
-                  [value]="isIndeterminate(download.value) ? 100 : download.value.percent" class="download-progressbar">
+                  <ngb-progressbar height="1.5rem" [showValue]="!isIndeterminate(download.value) && download.value.status !== 'compressing'" [striped]="isIndeterminate(download.value)" [animated]="isIndeterminate(download.value)" [type]="download.value.status === 'compressing' ? 'info' : 'success'"
+                  [value]="isIndeterminate(download.value) ? 100 : download.value.percent" class="download-progressbar" [title]="download.value.status === 'compressing' ? (download.value.msg || '') : ''">
                     @if (download.value.status === 'postprocessing') {
                       <span>Post-processing</span>
+                    }
+                    @if (download.value.status === 'compressing') {
+                      <span>Compressing {{ download.value.percent | number:'1.0-0' }}%</span>
                     }
                   </ngb-progressbar>
                 }

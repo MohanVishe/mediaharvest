@@ -193,6 +193,55 @@ describe('DownloadsService', () => {
     req.flush({ presets: ['Preset A'] });
   });
 
+  it('add() sends compress for video only, and never "off"', () => {
+    service.add({ ...basePayload(), compress: 'medium' }).subscribe();
+    const video = httpMock.expectOne('add');
+    expect(video.request.body).toEqual(expect.objectContaining({ compress: 'medium' }));
+    video.flush({ status: 'ok' });
+
+    service.add({ ...basePayload(), compress: 'off' }).subscribe();
+    const off = httpMock.expectOne('add');
+    expect(off.request.body).not.toHaveProperty('compress');
+    off.flush({ status: 'ok' });
+
+    service.add({ ...basePayload(), downloadType: 'audio', compress: 'strong' }).subscribe();
+    const audio = httpMock.expectOne('add');
+    expect(audio.request.body).not.toHaveProperty('compress');
+    audio.flush({ status: 'ok' });
+  });
+
+  it('compress() posts the completed download id and preset', () => {
+    service.compress('https://example.com/v', 'light').subscribe();
+    const req = httpMock.expectOne('compress');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ id: 'https://example.com/v', preset: 'light', height: 'keep' });
+    req.flush({ status: 'ok' });
+  });
+
+  it('add() sends the compress resolution only when it limits one', () => {
+    service.add({ ...basePayload(), compress: 'light', compressHeight: '480' }).subscribe();
+    const limited = httpMock.expectOne('add');
+    expect(limited.request.body).toEqual(expect.objectContaining({ compress: 'light', compress_height: '480' }));
+    limited.flush({ status: 'ok' });
+
+    service.add({ ...basePayload(), compress: 'light', compressHeight: 'keep' }).subscribe();
+    const kept = httpMock.expectOne('add');
+    expect(kept.request.body).not.toHaveProperty('compress_height');
+    kept.flush({ status: 'ok' });
+
+    service.add({ ...basePayload(), compress: 'off', compressHeight: '480' }).subscribe();
+    const off = httpMock.expectOne('add');
+    expect(off.request.body).not.toHaveProperty('compress_height');
+    off.flush({ status: 'ok' });
+  });
+
+  it('compress() sends the chosen resolution', () => {
+    service.compress('https://example.com/v', 'compatible', '720').subscribe();
+    const req = httpMock.expectOne('compress');
+    expect(req.request.body).toEqual({ id: 'https://example.com/v', preset: 'compatible', height: '720' });
+    req.flush({ status: 'ok' });
+  });
+
   it('retry() posts the failed download id', () => {
     service.retry('https://example.com/v').subscribe();
     const req = httpMock.expectOne('retry');

@@ -13,6 +13,7 @@ from functools import partial
 import logging
 import re
 import signal
+import threading
 import sys
 import types
 from typing import Any, Optional
@@ -25,7 +26,8 @@ from dl_formats import get_format, get_opts, merge_ytdl_option_layers
 from download_options import DownloadOptions
 import format_catalog
 from music_metadata import MusicMetadataPreProcessor
-from media_extras import DiskSpaceCheckPP, LyricsPP, attach_audio_bitrate_pp
+import compress
+from media_extras import CompressPP, DiskSpaceCheckPP, LyricsPP, attach_audio_bitrate_pp
 from datetime import datetime
 from state_store import AtomicJsonStore, from_json_compatible, read_legacy_shelf, to_json_compatible
 from subscriptions import _entry_id, annotate_feed_entry, is_channel_extraction, unexpected_ytdl_error
@@ -633,6 +635,9 @@ _DOWNLOAD_INFO_DEFAULTS: dict[str, Any] = {
     "format_id": "",
     "lyrics": False,
     "video_subtitles": "none",
+    "compress": "off",
+    "compress_height": "keep",
+    "compression": None,
     "chapter_template": "",
     "subtitle_language": "en",
     "subtitle_mode": "prefer_manual",
@@ -685,6 +690,8 @@ class DownloadInfo:
         format_id='',
         lyrics=False,
         video_subtitles='none',
+        compress='off',
+        compress_height='keep',
     ):
         self.id = id if len(custom_name_prefix) == 0 else f'{custom_name_prefix}.{id}'
         self.title = title if len(custom_name_prefix) == 0 else f'{custom_name_prefix}.{title}'
@@ -716,6 +723,12 @@ class DownloadInfo:
         self.format_id = format_id
         self.lyrics = lyrics
         self.video_subtitles = video_subtitles
+        self.compress = compress
+        self.compress_height = compress_height
+        # Set once the finished video is compressed, or while it is: state
+        # (running, done, kept, error), preset, percent, eta, original_size,
+        # size, msg. See DownloadQueue.compress and Download._compress_progress.
+        self.compression = None
         self.chapter_template = chapter_template
         self.subtitle_language = subtitle_language
         self.subtitle_mode = subtitle_mode
@@ -791,6 +804,18 @@ class DownloadInfo:
                 self.ytdl_options_presets = [str(x).strip() for x in legacy_preset if str(x).strip()]
             else:
                 self.ytdl_options_presets = []
+        compression = self.__dict__.get('compression')
+        if isinstance(compression, dict) and compression.get('state') == 'running':
+            # Saved while compressing, and the server stopped before it ended:
+            # the original is untouched, and compressing can be started again.
+            self.compression = {'state': 'error', 'preset': compression.get('preset'),
+                                'height': compression.get('height'),
+                                'msg': _COMPRESS_STOPPED_BY_RESTART}
+
+
+# Shown on a row whose compression a restart cut off; also how the leftover
+# half-written file is found at the next start.
+_COMPRESS_STOPPED_BY_RESTART = 'Stopped by a restart before it finished.'
 
 
 # "video_password" is deliberately excluded: it's a secret and must never be
@@ -814,6 +839,9 @@ _PERSISTED_DOWNLOAD_FIELDS = (
     "format_id",
     "lyrics",
     "video_subtitles",
+    "compress",
+    "compress_height",
+    "compression",
     "chapter_template",
     "subtitle_language",
     "subtitle_mode",
@@ -1084,7 +1112,29 @@ class Download:
         if getattr(self.info, 'download_type', '') in ('video', 'audio') and not resuming:
             ydl.add_post_processor(
                 DiskSpaceCheckPP(ydl, (self.temp_dir, self.download_dir)), when='before_dl')
+        preset = getattr(self.info, 'compress', 'off')
+        if getattr(self.info, 'download_type', '') == 'video' and preset in compress.PRESETS:
+            # Added after the postprocessors the params configure, so it runs
+            # last and compresses the file with its subtitles and metadata in.
+            ydl.add_post_processor(
+                CompressPP(ydl, preset, report=self._report_compression,
+                           max_height=format_catalog.compress_max_height(
+                               getattr(self.info, 'compress_height', 'keep'))),
+                when='post_process')
         return ydl
+
+    def _report_compression(self, kind, value):
+        """CompressPP's progress and result, forwarded to the row."""
+        if kind == 'progress':
+            speed = f', {value.speed:.0f}x real time' if value.speed else ''
+            self.status_queue.put({
+                'status': 'compressing',
+                'percent': value.percent,
+                'eta': value.eta,
+                'msg': f'Compressing ({format_catalog.compress_name(self.info.compress)}){speed}',
+            })
+        else:
+            self.status_queue.put({'compression': value})
 
     def _download(self):
         # Run in our own process group so cancel() can SIGKILL the whole
@@ -1370,6 +1420,10 @@ class Download:
             if self.canceled:
                 log.info(f"Download {self.info.title} is canceled; stopping status updates.")
                 return
+            if 'compression' in status:
+                # CompressPP's result: shown on the row once it completes.
+                self.info.compression = status['compression']
+                continue
             self.tmpfilename = status.get('tmpfilename')
             if 'filename' in status:
                 fileName = status.get('filename')
@@ -1464,6 +1518,8 @@ class Download:
                 total = status.get('total_bytes') or status.get('total_bytes_estimate')
                 if total:
                     self.info.percent = status['downloaded_bytes'] / total * 100
+            elif 'percent' in status:
+                self.info.percent = status['percent']
             self.info.speed = status.get('speed')
             self.info.eta = status.get('eta')
             log.debug(f"Updating status for {self.info.title}: {status}")
@@ -1630,6 +1686,7 @@ class DownloadQueue:
             thread_name_prefix="dl",
         )
         self.done.load()
+        self._remove_compress_leftovers()
         self._add_generation = 0
         # URLs canceled while a top-level add was in flight, so a playlist
         # still being expanded skips them. Kept until the last in-flight add
@@ -1638,6 +1695,8 @@ class DownloadQueue:
         # a playlist re-queue an item the user had just canceled.
         self._canceled_urls = set()
         self._adds_in_flight = 0
+        # Completed downloads being compressed: url -> event that stops it.
+        self._compressing: dict[str, threading.Event] = {}
         self._scheduled_probe_at: dict[str, float] = {}
         self._scheduled_probe_failures: dict[str, int] = {}
         self._live_monitor_task: Optional[asyncio.Task] = None
@@ -2293,6 +2352,88 @@ class DownloadQueue:
         )
         return await self.add(info.url, options, retry_entry=info.entry)
 
+    def _finished_file_path(self, info) -> Optional[str]:
+        """The full path of a completed download's file, or None when it
+        cannot be resolved inside its download directory."""
+        directory, calc_error = self.__calc_download_path(info.download_type, info.folder)
+        filename = getattr(info, 'filename', None)
+        if calc_error is not None or not directory or not filename:
+            return None
+        base = os.path.realpath(directory)
+        path = os.path.realpath(os.path.join(directory, filename))
+        return path if _is_within_directory(base, path) else None
+
+    def _remove_compress_leftovers(self):
+        """Delete half-written compressed copies of videos whose compression
+        a restart cut off."""
+        for _key, download in self.done.items():
+            info = download.info
+            compression = getattr(info, 'compression', None)
+            if isinstance(compression, dict) and compression.get('msg') == _COMPRESS_STOPPED_BY_RESTART:
+                path = self._finished_file_path(info)
+                if path:
+                    compress.remove_leftovers(path)
+
+    async def compress(self, id, preset, height=None):
+        """Re-encode a finished video in Completed with *preset*
+        (compress.PRESETS), in the background. The row shows progress and then
+        the saving through 'completed' updates."""
+        if not self.done.exists(id):
+            return {'status': 'error', 'msg': 'That download is no longer in Completed.'}
+        download = self.done.get(id)
+        info = download.info
+        if info.status != 'finished' or info.download_type != 'video':
+            return {'status': 'error', 'msg': 'Only finished video downloads can be compressed.'}
+        if id in self._compressing:
+            return {'status': 'error', 'msg': 'This video is already being compressed.'}
+        path = self._finished_file_path(info)
+        if path is None or not os.path.isfile(path):
+            return {'status': 'error', 'msg': 'The video file is no longer in the download folder.'}
+        stop = threading.Event()
+        self._compressing[id] = stop
+        info.compression = {'state': 'running', 'preset': preset, 'height': height, 'percent': 0, 'eta': None}
+        await self.notifier.completed(info)
+        bg_tasks.create_task(self.__run_compression(id, download, path, preset, stop, height), name='compress')
+        return {'status': 'ok'}
+
+    async def __run_compression(self, id, download, path, preset, stop, height=None):
+        info = download.info
+        loop = asyncio.get_running_loop()
+
+        def on_progress(progress):
+            # Called from the worker thread; the dict is replaced, not changed.
+            info.compression = {'state': 'running', 'preset': preset, 'height': height,
+                                'percent': round(progress.percent, 1), 'eta': progress.eta}
+            asyncio.run_coroutine_threadsafe(self.notifier.completed(info), loop)
+
+        try:
+            result = await loop.run_in_executor(
+                None, partial(compress.compress_file, path, preset, on_progress, stop.is_set,
+                              max_height=height))
+        except compress.CompressError as exc:
+            info.compression = {'state': 'error', 'preset': preset, 'height': height, 'msg': str(exc)}
+        except Exception as exc:  # pylint: disable=broad-except
+            log.exception('Compressing %s failed', path)
+            info.compression = {'state': 'error', 'preset': preset, 'height': height,
+                                'msg': f'Compression failed: {exc}'}
+        else:
+            info.compression = {
+                'state': 'kept' if result.kept_original else 'done',
+                'preset': preset,
+                'height': height,
+                'original_size': result.original_size,
+                'size': result.size,
+            }
+            info.size = result.size
+            if result.path and result.path != path:
+                # Any device turned an .mkv or .webm into an .mp4.
+                info.filename = os.path.join(os.path.dirname(info.filename), os.path.basename(result.path))
+        finally:
+            self._compressing.pop(id, None)
+        if self.done.exists(id) and self.done.get(id) is download:
+            await self.done.put(download)
+            await self.notifier.completed(info)
+
     async def add_entry(self, entry, options: DownloadOptions):
         normalized_entry = copy.deepcopy(entry) if isinstance(entry, dict) else entry
         return await self.__add_entry(normalized_entry, options, set(), None)
@@ -2355,6 +2496,8 @@ class DownloadQueue:
         mode = self.config.DELETE_FILE_ON_TRASHCAN
         should_delete = mode == 'true' or (mode == 'ask' and delete_files)
         for id in ids:
+            if (stop := self._compressing.get(id)) is not None:
+                stop.set()  # stop compressing a row that is being removed
             if not self.done.exists(id):
                 log.warning(f'requested delete for non-existent download {id}')
                 continue

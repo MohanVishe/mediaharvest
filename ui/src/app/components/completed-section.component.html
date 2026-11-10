@@ -89,6 +89,25 @@
                   </div>
                 </div>
               }
+              @if (entry[1].compression; as c) {
+                <div class="compress-status small mt-1">
+                  @switch (c.state) {
+                    @case ('running') {
+                      <div class="text-info">Compressing ({{ presetName(c.preset, c.height) }}) {{ (c.percent ?? 0) | number:'1.0-0' }}%@if (c.eta) {, {{ c.eta | eta }} left}</div>
+                      <ngb-progressbar type="info" height="0.35rem" [value]="c.percent ?? 0" class="compress-progress" />
+                    }
+                    @case ('done') {
+                      <span class="text-success">Compressed ({{ presetName(c.preset, c.height) }}): {{ (c.original_size ?? 0) | fileSize }} → {{ (c.size ?? 0) | fileSize }}, {{ savedPercent(entry[1]) | number:'1.0-0' }}% smaller</span>
+                    }
+                    @case ('kept') {
+                      <span class="text-body-secondary">Kept as it was: {{ presetName(c.preset, c.height) }} would not make it smaller.</span>
+                    }
+                    @case ('error') {
+                      <span class="text-danger">Not compressed: {{ c.msg }}</span>
+                    }
+                  }
+                </div>
+              }
             </td>
             <td class="text-nowrap">
               {{ downloadTypeLabel(entry[1]) }}
@@ -113,6 +132,32 @@
               <div class="d-flex justify-content-end">
                 @if (entry[1].status === 'error') {
                   <button type="button" class="btn btn-link" [attr.aria-label]="'Retry download for ' + entry[1].title" (click)="retryDownload(entry[0], entry[1])"><fa-icon [icon]="faRedoAlt" /></button>
+                }
+                @if (canCompress(entry[1]) && compressPresets().length) {
+                  <div ngbDropdown #compressMenu="ngbDropdown" autoClose="outside" container="body" placement="bottom-end" class="d-inline-block">
+                    <button type="button" class="btn btn-link compress-toggle" ngbDropdownToggle ngbTooltip="Make smaller"
+                      [attr.aria-label]="'Compress ' + entry[1].title"><fa-icon [icon]="faCompress" /></button>
+                    <div ngbDropdownMenu class="compress-menu">
+                      <h6 class="dropdown-header">Make this video smaller</h6>
+                      <div class="px-3 pb-2">
+                        <label class="form-label small mb-1" for="compress-height-{{ entry[1].id }}">Resolution</label>
+                        <select class="form-select form-select-sm" id="compress-height-{{ entry[1].id }}"
+                          [ngModel]="menuHeight" (ngModelChange)="menuHeight = $event">
+                          @for (h of compressHeights(); track h.id) {
+                            <option [ngValue]="h.id">{{ h.text }}</option>
+                          }
+                        </select>
+                      </div>
+                      @for (p of compressPresets(); track p.id) {
+                        <button type="button" ngbDropdownItem (click)="compressMenu.close(); compressDownload(entry[0], entry[1], p.id, menuHeight)">
+                          {{ p.text }}
+                          @if (p.detail) {
+                            <small class="d-block text-body-secondary">{{ p.detail }}</small>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
                 }
                 @if (entry[1].filename) {
                   <a href="{{buildDownloadLink(entry[1])}}" download class="btn btn-link" [attr.aria-label]="'Download result file for ' + entry[1].title"><fa-icon [icon]="faDownload" /></a>

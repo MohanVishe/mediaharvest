@@ -1,5 +1,5 @@
 """Extra yt-dlp postprocessors for this fork: smaller audio on request,
-lyrics, and a disk-space check before long downloads.
+lyrics, a disk-space check before long downloads, and video compression.
 
 Every one of them is best-effort: they warn and continue, so a lookup or a
 probe that goes wrong never fails a download that otherwise succeeded. The
@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import compress
 import urllib.parse
 from typing import Any, Optional
 
@@ -156,6 +157,60 @@ class DiskSpaceCheckPP(PostProcessor):
                     f'Not enough disk space: this download needs about {format_bytes(needed)} '
                     f'(including room to merge), but only {format_bytes(free)} is free '
                     f'in {directory}.')
+        return [], info
+
+
+# ---------------------------------------------------------------------------
+# Compression
+# ---------------------------------------------------------------------------
+
+class CompressPP(PostProcessor):
+    """Make the finished video smaller (compress.py), after every other
+    postprocessor has written into it (subtitles, chapters, metadata). A
+    failure only warns: the download itself worked, and the original stays.
+
+    *report* gets ('progress', compress.Progress) while it runs and
+    ('result', dict) once at the end; the dict is DownloadInfo.compression.
+    """
+
+    def __init__(self, downloader, preset: str, report=None, max_height=None):
+        super().__init__(downloader)
+        self._preset = preset
+        self._max_height = max_height
+        self._report = report or (lambda kind, value: None)
+
+    @classmethod
+    def pp_key(cls):
+        return 'Compress'
+
+    def run(self, info):
+        path = info.get('filepath')
+        if not path or not os.path.isfile(path):
+            return [], info
+        try:
+            result = compress.compress_file(
+                path, self._preset, on_progress=lambda p: self._report('progress', p),
+                max_height=self._max_height)
+        except compress.CompressError as exc:
+            self.report_warning(f'Not compressed: {exc}')
+            self._report('result', {'state': 'error', 'preset': self._preset,
+                                    'height': self._max_height, 'msg': str(exc)})
+            return [], info
+        self._report('result', {
+            'state': 'kept' if result.kept_original else 'done',
+            'preset': self._preset,
+            'height': self._max_height,
+            'original_size': result.original_size,
+            'size': result.size,
+        })
+        if result.path and result.path != path:
+            # Any device writes an .mp4 in place of an .mkv or .webm: point
+            # MoveFiles, and so the Completed row, at the new file.
+            moves = info.get('__files_to_move')
+            if isinstance(moves, dict):
+                moves.pop(path, None)
+            info['filepath'] = result.path
+            info['ext'] = os.path.splitext(result.path)[1].lstrip('.')
         return [], info
 
 

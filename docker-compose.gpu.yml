@@ -1,0 +1,22 @@
+# Optional: let MediaHarvest use an NVIDIA graphics card for the
+# "Any device" compression level (H.264 on the GPU, about twice as fast).
+# Without it, everything still works on the CPU.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# or put this line in .env so plain `docker compose up -d` uses it:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml   (Windows: use ; instead of :)
+#
+# Needs an NVIDIA driver on the computer. Docker Desktop on Windows passes
+# the GPU through by itself; on Linux install the NVIDIA Container Toolkit.
+services:
+  mediaharvest:
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,video"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
