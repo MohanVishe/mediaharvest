@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The logo glyph, scaled into the 66dp safe circle of an adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.75" android:scaleY="0.75"
+        android:translateX="16.5" android:translateY="17.25">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M46,18h8a3,3 0,0 1,3 3v26a3,3 0,0 1,-3 3h-8a3,3 0,0 1,-3 -3v-26a3,3 0,0 1,3 -3z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M28,46L72,46L50,68Z" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="7.5"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M22,60L22,80L78,80L78,60" />
+    </group>
+</vector>

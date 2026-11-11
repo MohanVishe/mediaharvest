@@ -1,0 +1,18 @@
+{
+  "name": "mediaharvest-android",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "ubuntu",
+  "workspaceFolder": "/workspace/android",
+  "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspace,type=bind",
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "mounts": [
+    "source=mediaharvest-gradle,target=/home/ubuntu/.gradle,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": ["fwcd.kotlin"]
+    }
+  }
+}

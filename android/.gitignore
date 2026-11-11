@@ -1,0 +1,8 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+# The release key lives outside the repository (see README.md).
+*.jks
+*.keystore
+keystore.properties

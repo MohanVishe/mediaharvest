@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MediaHarvest</string>
+    <string name="link_hint">Paste a link</string>
+    <string name="paste">Paste</string>
+    <string name="video">Video</string>
+    <string name="audio">Audio</string>
+    <string name="best">Best</string>
+    <string name="download">Download</string>
+    <string name="bad_link">Paste a link that starts with https://</string>
+    <string name="downloads">Downloads</string>
+    <string name="clear">Clear list</string>
+    <string name="empty">Nothing yet. Paste a link here, or share one from YouTube or your browser.</string>
+    <string name="queued">Waiting</string>
+    <string name="preparing">Preparing</string>
+    <string name="stopped">Stopped</string>
+    <string name="failed">Failed</string>
+    <string name="open">Open</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="remove">Remove from list</string>
+    <string name="no_app">No app on this phone can open this file</string>
+    <string name="more">More</string>
+    <string name="update_engine">Update download engine</string>
+    <string name="updating">Updating the download engine…</string>
+    <string name="updated">Download engine updated to %1$s</string>
+    <string name="up_to_date">The download engine is up to date</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_busy">Wait for the downloads to finish first</string>
+    <string name="about">About</string>
+    <string name="about_version">Version %1$s · yt-dlp %2$s</string>
+    <string name="about_privacy">No account, no ads, no tracking. The app connects only to the sites you download from, and to GitHub when you tap Update download engine. Files are saved in Download/MediaHarvest.</string>
+    <string name="about_licences">MediaHarvest is free software under the AGPL-3.0. It is built with youtubedl-android (GPL-3.0), yt-dlp (Unlicense), FFmpeg (LGPL/GPL), Python (PSF), QuickJS (MIT), JetBrains Mono (OFL-1.1) and pixelarticons (MIT).</string>
+    <string name="source">Source code</string>
+    <string name="close">Close</string>
+    <string name="channel">Downloads</string>
+    <string name="note_title">Downloading</string>
+    <string name="note_saved">Saved: %1$s</string>
+    <string name="note_failed">Failed: %1$s</string>
+</resources>

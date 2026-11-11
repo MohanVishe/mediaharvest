@@ -6,7 +6,8 @@
 
 <p align="center">
   Paste a link, see every format the video offers, and save the video or music
-  in the quality and size you choose. It runs on your own computer, in Docker.
+  in the quality and size you choose. It runs on your own computer, in Docker,
+  and as a small app on Android phones.
 </p>
 
 ![A pasted YouTube link: the preview shows the video and its 13 video and 12 audio formats; below are Video, Audio, Captions and Thumbnail, the chosen options on one line, and the Downloading, Completed and Subscriptions tabs](docs/screenshot-preview.jpg)
@@ -131,6 +132,32 @@ also gets a dated tag to pin.
 compress. With Docker Compose, add
 [docker-compose.gpu.yml](docker-compose.gpu.yml) (its first lines say how).
 
+### Android phone
+
+The app runs everything on the phone itself: no computer, account or server.
+It has the essentials of the web page: video in Best, 1080p, 720p or 480p, or
+music as M4A or MP3, saved to `Download/MediaHarvest`.
+
+1. On the phone, open the [latest release](https://github.com/MohanVishe/mediaharvest/releases/latest)
+   and download one file:
+
+   | File | For |
+   |---|---|
+   | `MediaHarvest-…-arm64-v8a-release.apk` | Most phones. Pick this one if unsure. |
+   | `MediaHarvest-…-armeabi-v7a-release.apk` | Older or low-cost phones. |
+   | `MediaHarvest-…-x86_64-release.apk` | Chromebooks and emulators. |
+
+2. Open the file. Android asks once to allow installs from your browser; allow
+   it, then tap **Install**.
+3. In YouTube or your browser, tap **Share** and pick **MediaHarvest**, or paste
+   a link in the app. Tap **Download**.
+
+It needs Android 10 or newer. The file is 50 to 60 MB; installed, the app
+takes about 110 MB, and about 150 MB more once the first download unpacks
+Python and FFmpeg. Sites change often: when downloads
+start failing, tap **⋯ → Update download engine** to fetch the newest yt-dlp.
+To update the app, install the newer file over it; your list stays.
+
 ### Update, stop, remove
 
 In the install folder (or the repository):
@@ -210,6 +237,11 @@ step, and which file does it, is explained without jargon in
 - **Cookies** are a signed-in session. Upload them only when a video needs them,
   and use a separate account.
 - Keep **per-download yt-dlp options** off (the default): they can run commands.
+- **The Android app** asks for internet and notifications only, no storage,
+  contacts, location or account access. It connects to the sites you download
+  from, and to GitHub only when you tap *Update download engine*. Nothing is
+  backed up or copied to other devices, it reads the clipboard only when you
+  tap *Paste*, and it accepts only `http(s)` links.
 
 Details and how to report a problem: [SECURITY.md](SECURITY.md).
 

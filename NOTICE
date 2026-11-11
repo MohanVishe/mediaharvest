@@ -15,3 +15,10 @@ and a new CI and release pipeline.
 The Mono theme bundles JetBrains Mono (copyright the JetBrains Mono Project
 Authors, SIL Open Font License 1.1) and icons from pixelarticons (copyright
 Gerrit Halfmann, MIT License). Their licences are in ui/src/mono/.
+
+The Android app (android/) uses the same font and icons, and is built with
+youtubedl-android (https://github.com/JunkFood02/youtubedl-android, GNU General
+Public License v3.0), which bundles yt-dlp (Unlicense), Python (PSF License),
+FFmpeg (LGPL/GPL) and QuickJS (MIT License). It also uses AndroidX and Jetpack
+Compose (Apache License 2.0), Kotlin (Apache License 2.0), Jackson (Apache
+License 2.0) and Apache Commons IO and Compress (Apache License 2.0).
