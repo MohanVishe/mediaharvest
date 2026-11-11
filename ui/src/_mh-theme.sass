@@ -1,0 +1,358 @@
+// MediaHarvest look: quiet graphite neutrals, one teal accent, type that reads
+// at a glance. Surfaces, borders and text come from one ramp per theme; the
+// colour lives in the thumbnails and the progress along their bottom edge.
+
+:root, [data-bs-theme="light"]
+    --mh-bg: #f5f6f6
+    --mh-surface: #ffffff
+    --mh-surface-2: #f0f2f2
+    --mh-line: rgba(17, 24, 28, .09)
+    --mh-text: #15191b
+    --mh-text-2: #4b5459
+    --mh-text-3: #737c82
+    --mh-progress: #0f766e
+    --mh-radius: 10px
+    --mh-radius-lg: 14px
+    --mh-font: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif
+    --mh-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace
+    --bs-body-bg: var(--mh-bg)
+    --bs-body-color: var(--mh-text)
+    --bs-emphasis-color: var(--mh-text)
+    --bs-secondary-color: var(--mh-text-2)
+    --bs-tertiary-color: var(--mh-text-3)
+    --bs-secondary-bg: var(--mh-surface-2)
+    --bs-tertiary-bg: var(--mh-surface-2)
+    --bs-border-color: var(--mh-line)
+    --bs-border-radius: 8px
+    --bs-border-radius-lg: var(--mh-radius)
+
+[data-bs-theme="dark"]
+    --mh-bg: #111315
+    --mh-surface: #181a1d
+    --mh-surface-2: #202327
+    --mh-line: rgba(231, 233, 234, .08)
+    --mh-text: #e7e9ea
+    --mh-text-2: #a3a9ae
+    --mh-text-3: #737a80
+    --mh-progress: #2dd4bf
+    --bs-body-bg: var(--mh-bg)
+    --bs-body-color: var(--mh-text)
+    --bs-emphasis-color: #f4f5f5
+    --bs-secondary-color: var(--mh-text-2)
+    --bs-tertiary-color: var(--mh-text-3)
+    --bs-secondary-bg: var(--mh-surface-2)
+    --bs-tertiary-bg: var(--mh-surface-2)
+    --bs-border-color: var(--mh-line)
+
+body
+    background: var(--mh-bg)
+    font-family: var(--mh-font)
+    -webkit-font-smoothing: antialiased
+
+.form-control, .form-select, .input-group-text, .ng-select .ng-select-container
+    background-color: var(--mh-surface)
+    border-color: var(--mh-line)
+
+.input-group-text
+    color: var(--mh-text-2)
+    font-size: .875rem
+
+.card, .modal-content, .dropdown-menu, .popover
+    background-color: var(--mh-surface)
+    border-color: var(--mh-line)
+
+.modal-content
+    border-radius: var(--mh-radius-lg)
+
+.modal-header, .modal-footer
+    border-color: var(--mh-line)
+
+.dropdown-menu
+    border-radius: var(--mh-radius)
+    padding: 4px
+
+    .dropdown-item
+        border-radius: 6px
+
+.mh-mono
+    font-family: var(--mh-mono)
+    font-variant-numeric: tabular-nums
+
+// Quiet icon buttons: rows, the top bar, menus.
+.mh-icon-btn
+    display: inline-grid
+    place-items: center
+    width: 32px
+    height: 32px
+    padding: 0
+    border: 0
+    border-radius: 8px
+    background: transparent
+    color: var(--mh-text-2)
+
+    &:hover, &:focus-visible
+        background: var(--mh-surface-2)
+        color: var(--mh-text)
+
+    &:focus-visible
+        outline: 2px solid var(--mh-accent-text)
+        outline-offset: 1px
+
+    &.mh-danger:hover
+        color: var(--bs-danger)
+
+    &::after
+        display: none
+
+// Full-page states: connecting, restarting, closed.
+.mh-overlay
+    position: fixed
+    inset: 0
+    z-index: 1060
+    display: grid
+    place-items: center
+    background: var(--mh-bg)
+    text-align: center
+    padding: 24px
+
+    .mh-overlay-title
+        font-size: 1.25rem
+        font-weight: 500
+        margin: 16px 0 4px
+
+    .mh-overlay-text
+        color: var(--mh-text-2)
+        max-width: 28rem
+        margin: 0 auto
+
+// Settings dialog.
+.mh-settings
+    .mh-settings-group + .mh-settings-group
+        border-top: 1px solid var(--mh-line)
+        margin-top: 20px
+        padding-top: 20px
+
+    .mh-settings-title
+        font-size: 1rem
+        font-weight: 500
+        margin-bottom: 4px
+
+    .mh-settings-hint
+        color: var(--mh-text-2)
+        font-size: .875rem
+        margin-bottom: 12px
+
+    .mh-setting-row
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 16px
+        padding: 8px 0
+
+        .form-select
+            width: auto
+            min-width: 11rem
+
+        @media (max-width: 575.98px)
+            flex-direction: column
+            align-items: stretch
+
+            .form-select
+                width: 100%
+
+    .mh-setting-label
+        font-size: .9375rem
+
+    .mh-setting-help
+        color: var(--mh-text-3)
+        font-size: .8125rem
+
+    .mh-folder-label
+        font-size: .875rem
+        color: var(--mh-text-2)
+        margin-bottom: 4px
+
+// Page frame: a top bar, the link box, then the lists, in one column.
+.mh-topbar
+    position: sticky
+    top: 0
+    z-index: 1020
+    background: color-mix(in srgb, var(--mh-bg) 88%, transparent)
+    backdrop-filter: blur(8px)
+    border-bottom: 1px solid var(--mh-line)
+
+.mh-topbar-inner, .mh-main, .mh-footer-inner
+    width: 100%
+    max-width: 992px
+    margin: 0 auto
+    padding-left: 16px
+    padding-right: 16px
+
+.mh-topbar-inner
+    display: flex
+    align-items: center
+    gap: 16px
+    height: 56px
+
+.mh-brand
+    display: flex
+    align-items: center
+    gap: 10px
+    color: var(--mh-text)
+    font-weight: 600
+    font-size: 1.0625rem
+    text-decoration: none
+
+    &:hover
+        color: var(--mh-text)
+
+.mh-topbar-actions
+    display: flex
+    align-items: center
+    gap: 4px
+    margin-left: auto
+
+.mh-main
+    padding-top: 32px
+    padding-bottom: 48px
+
+    @media (max-width: 575.98px)
+        padding-top: 16px
+
+.mh-add .add-url-box
+    background: var(--mh-surface)
+    border: 1px solid var(--mh-line)
+    border-radius: var(--mh-radius-lg)
+    padding: 20px
+
+    @media (max-width: 575.98px)
+        padding: 14px
+
+// The type switch and the summary of the other options share one row.
+.type-switch-row
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 16px
+    margin-top: 16px
+
+.mh-options-toggle
+    display: flex
+    align-items: center
+    gap: 12px
+    min-width: 0
+    margin-left: auto
+    padding: 6px 10px
+    border: 0
+    border-radius: 8px
+    background: transparent
+    color: var(--mh-text-2)
+    font-size: .875rem
+
+    &:hover, &:focus-visible
+        background: var(--mh-surface-2)
+        color: var(--mh-text)
+
+    .mh-summary
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+    .mh-options-label
+        flex: none
+        color: var(--mh-accent-text)
+        font-weight: 500
+
+    @media (max-width: 575.98px)
+        width: 100%
+        margin-left: 0
+        justify-content: space-between
+        padding-left: 0
+        padding-right: 0
+
+.mh-options
+    > :first-child
+        margin-top: 16px
+
+// Downloading / Completed / Subscriptions.
+.mh-lists
+    margin-top: 32px
+
+.mh-tabs
+    display: flex
+    gap: 4px
+    border-bottom: 1px solid var(--mh-line)
+    margin-bottom: 12px
+    overflow-x: auto
+    scrollbar-width: none
+
+.mh-tab
+    display: flex
+    align-items: center
+    gap: 8px
+    padding: 10px 12px
+    border: 0
+    border-bottom: 2px solid transparent
+    margin-bottom: -1px
+    background: transparent
+    color: var(--mh-text-2)
+    font-weight: 500
+    white-space: nowrap
+
+    &:hover
+        color: var(--mh-text)
+
+    &.active
+        color: var(--mh-text)
+        border-bottom-color: var(--mh-accent)
+
+    &:focus-visible
+        outline: 2px solid var(--mh-accent-text)
+        outline-offset: -2px
+        border-radius: 6px 6px 0 0
+
+    .mh-count
+        min-width: 22px
+        padding: 1px 7px
+        border-radius: 999px
+        background: var(--mh-surface-2)
+        color: var(--mh-text-2)
+        font-size: .75rem
+        font-variant-numeric: tabular-nums
+
+    &.active .mh-count
+        background: rgba(var(--mh-accent-rgb), .12)
+        color: var(--mh-accent-text)
+
+@media (max-width: 575.98px)
+    .mh-tab
+        flex: 1 1 auto
+        justify-content: center
+        gap: 6px
+        padding: 10px 4px
+        font-size: .875rem
+
+        .mh-count
+            min-width: 0
+            padding: 1px 6px
+
+.mh-live-dot
+    width: 7px
+    height: 7px
+    border-radius: 50%
+    background: var(--mh-progress)
+
+@media (prefers-reduced-motion: no-preference)
+    .mh-live-dot
+        animation: mh-pulse 1.6s ease-in-out infinite
+
+    .mh-pulse
+        animation: mh-pulse 1.6s ease-in-out infinite
+
+@keyframes mh-pulse
+    50%
+        opacity: .4
+
+@media (prefers-reduced-motion: no-preference)
+    .btn, .form-control, .form-select, .mh-icon-btn
+        transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease

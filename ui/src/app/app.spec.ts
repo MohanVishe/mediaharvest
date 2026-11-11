@@ -138,6 +138,34 @@ class DownloadsServiceStub {
     return of({ status: 'ok' });
   }
 
+  settingsPage = {
+    settings: { delete_files: 'ask', keep_original: false, clear_completed_days: 0, keep_partial_files: false },
+    helper: true,
+    folders: { downloads: 'C:\\Videos', music: '', temp: '' },
+  };
+  savedSettings: unknown[] = [];
+  savedFolders: unknown[] = [];
+  closeCalls = 0;
+
+  getSettings() {
+    return of(this.settingsPage);
+  }
+
+  saveSettings(changes: unknown) {
+    this.savedSettings.push(changes);
+    return of(this.settingsPage);
+  }
+
+  saveFolders(folders: unknown) {
+    this.savedFolders.push(folders);
+    return of({ status: 'error', msg: 'That folder does not exist.' });
+  }
+
+  closeApp() {
+    this.closeCalls++;
+    return of({ status: 'closing' });
+  }
+
   deleteCookies() {
     return of({ status: 'ok' });
   }
@@ -266,31 +294,88 @@ describe('App', () => {
     expect(fixture.componentInstance.folder).toBe('music');
   });
 
-  it('collapses each section independently and remembers it (#1070)', () => {
+  it('shows one list at a time as tabs, and Downloading after adding', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const settings = TestBed.inject(SettingsStore);
-    const downloading = child(fixture, DownloadingSectionComponent);
+    const root = fixture.nativeElement as HTMLElement;
+    const panel = (selector: string) => root.querySelector(selector)!.closest<HTMLElement>('[role=tabpanel]')!;
+    const tab = (text: string) =>
+      Array.from(root.querySelectorAll<HTMLButtonElement>('[role=tab]')).find((b) => b.textContent?.includes(text))!;
 
-    const completed = child(fixture, CompletedSectionComponent);
+    expect(panel('app-downloading-section').hidden).toBe(false);
+    expect(panel('app-completed-section').hidden).toBe(true);
 
-    expect(downloading.collapsed).toBe(false);
-    expect(completed.collapsed).toBe(false);
+    tab('Completed').click();
+    fixture.detectChanges();
+    expect(panel('app-completed-section').hidden).toBe(false);
+    expect(panel('app-downloading-section').hidden).toBe(true);
+    expect(tab('Completed').getAttribute('aria-selected')).toBe('true');
 
-    completed.toggleCollapsed();
+    fixture.componentInstance.addUrl = 'https://example.com/v';
+    fixture.componentInstance.addDownload();
+    expect(fixture.componentInstance.activeTab).toBe('queue');
+  });
 
-    expect(completed.collapsed).toBe(true);
-    expect(downloading.collapsed).toBe(false);
-    expect(settings.get('metube_completed_collapsed')).toBe('true');
+  it('loads settings into the dialog and saves a change', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const modal = app['modal'] as NgbModal;
+    vi.spyOn(modal, 'open').mockReturnValue({ result: new Promise(() => undefined) } as NgbModalRef);
 
-    downloading.toggleCollapsed();
-    expect(settings.get('metube_downloading_collapsed')).toBe('true');
+    app.openSettings({} as never);
+    expect(app.settingsPage?.settings.delete_files).toBe('ask');
+    expect(app.folderDraft?.downloads).toBe('C:\\Videos');
+    expect(app.foldersChanged()).toBe(false);
 
-    // A fresh component picks the state back up.
-    const restored = TestBed.createComponent(App);
-    restored.detectChanges();
-    expect(child(restored, CompletedSectionComponent).collapsed).toBe(true);
-    expect(child(restored, DownloadingSectionComponent).collapsed).toBe(true);
+    app.saveSetting('keep_original', true);
+    expect(downloads.savedSettings).toEqual([{ keep_original: true }]);
+
+    app.folderDraft!.downloads = 'D:\\Media';
+    expect(app.foldersChanged()).toBe(true);
+    app.resetFolders();
+    expect(app.foldersChanged()).toBe(false);
+  });
+
+  it('stays on the page when the folders are refused', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const errors = vi.spyOn(TestBed.inject(ToastService), 'error');
+    vi.spyOn(app['modal'] as NgbModal, 'open').mockReturnValue({ result: new Promise(() => undefined) } as NgbModalRef);
+    app.openSettings({} as never);
+    app.folderDraft!.downloads = 'Q:\\Missing';
+    const close = vi.fn();
+
+    app.saveFolders({ close });
+
+    expect(downloads.savedFolders.length).toBe(1);
+    expect(close).not.toHaveBeenCalled();
+    expect(app.pageState).not.toBe('restarting');
+    expect(errors).toHaveBeenCalledWith('That folder does not exist.');
+  });
+
+  it('closes MediaHarvest only after the dialog is confirmed', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const modal = app['modal'] as NgbModal;
+    vi.spyOn(modal, 'open').mockReturnValueOnce({ result: Promise.reject('cancel') } as NgbModalRef);
+    app.confirmClose({} as never);
+    await Promise.resolve();
+    expect(downloads.closeCalls).toBe(0);
+
+    vi.spyOn(modal, 'open').mockReturnValueOnce({ result: Promise.resolve(true) } as NgbModalRef);
+    app.confirmClose({} as never);
+    await Promise.resolve();
+    expect(downloads.closeCalls).toBe(1);
+    expect(app.pageState).toBe('closed');
+  });
+
+  it('sums up the download options on one line', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.optionsSummary()).toMatch(/^Video · /);
   });
 
   it('enables Clear completed and Clear/Retry failed from the done list', () => {
@@ -658,7 +743,7 @@ describe('App', () => {
     expect(root.textContent).toContain('starts in');
   });
 
-  it('enables the Downloading toolbar once a row is ticked', async () => {
+  it('shows the Downloading bulk buttons once a row is ticked', async () => {
     downloads.queue.set('u1', { url: 'u1', title: 'One', status: 'pending', checked: false } as Download);
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
@@ -666,30 +751,31 @@ describe('App', () => {
     await new Promise((resolve) => setTimeout(resolve));
     const root = fixture.nativeElement as HTMLElement;
     const cancelSelected = () =>
-      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes('Cancel selected'))!;
-    expect(cancelSelected().disabled).toBe(true);
+      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes('Cancel selected'));
+    expect(cancelSelected()).toBeUndefined();
 
     const box = root.querySelector<HTMLInputElement>('app-downloading-section tbody input[type=checkbox]')!;
     box.click();
     fixture.detectChanges();
 
-    expect(cancelSelected().disabled).toBe(false);
+    expect(cancelSelected()).toBeDefined();
+    expect(root.querySelector('app-downloading-section .mh-bulk-count')?.textContent).toContain('1 selected');
   });
 
-  it('enables the Completed toolbar once a row is ticked', async () => {
+  it('shows the Completed bulk buttons once a row is ticked', async () => {
     downloads.done.set('d1', { url: 'd1', title: 'Done', status: 'finished', checked: false } as Download);
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     await new Promise((resolve) => setTimeout(resolve));
     const root = fixture.nativeElement as HTMLElement;
-    const clearSelected = () =>
-      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes('Clear selected'))!;
-    expect(clearSelected().disabled).toBe(true);
+    const removeSelected = () =>
+      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes('Remove selected'));
+    expect(removeSelected()).toBeUndefined();
 
     root.querySelector<HTMLInputElement>('app-completed-section tbody input[type=checkbox]')!.click();
     fixture.detectChanges();
 
-    expect(clearSelected().disabled).toBe(false);
+    expect(removeSelected()).toBeDefined();
   });
 
   it('shows the queued format in the Downloading table', () => {
@@ -1138,7 +1224,7 @@ describe('App', () => {
       downloads.queueChanged.next();
       fixture.detectChanges();
 
-      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Post-processing');
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Finishing');
       expect(fixture.componentInstance.activeDownloads).toBe(1);
       expect(fixture.componentInstance.queuedDownloads).toBe(0);
     });

@@ -10,6 +10,7 @@ import asyncio
 import io
 import json
 import os
+import time
 import shutil
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -574,3 +575,62 @@ async def test_a_restart_removes_a_half_written_copy(queue):
     assert not (downloads / 'v.compressing.mkv').exists()
     assert (downloads / 'v.mkv').exists()
     assert reloaded.done.exists('http://example.com/v')
+
+
+# --- Settings: keep the original, clear old rows ---------------------------
+
+def test_smaller_copy_path():
+    assert compress.smaller_copy_path('/d/My video.mkv') == '/d/My video (smaller).mkv'
+
+
+def test_compress_pp_can_keep_the_original(tmp_path):
+    path = str(tmp_path / 'v.mkv')
+    open(path, 'wb').close()
+    copy = str(tmp_path / 'v (smaller).mkv')
+    reports = []
+    pp = CompressPP(None, 'medium', report=lambda kind, value: reports.append((kind, value)), keep_original=True)
+    info = {'filepath': path, 'ext': 'mkv', '__files_to_move': {}}
+    with patch('compress.compress_file', return_value=compress.CompressResult(100, 40, False, copy)) as run:
+        _, info = pp.run(info)
+    assert run.call_args.kwargs['output'] == copy
+    assert info['filepath'] == copy
+    # The original still moves to the download folder.
+    assert path in info['__files_to_move']
+    assert reports[-1][1]['original_kept'] is True
+
+
+def test_download_passes_keep_original_to_compress_pp(tmp_path):
+    download = Download(str(tmp_path), str(tmp_path), '%(title)s.%(ext)s', '%(title)s.%(ext)s',
+                        'best', 'any', {}, _info(compress='medium'))
+    download.keep_original = True
+    assert [pp._keep_original for pp in _pps(download) if isinstance(pp, CompressPP)] == [True]
+
+
+async def test_compressing_from_completed_can_keep_the_original(queue):
+    dq, downloads = queue
+    dq.config.KEEP_ORIGINAL_AFTER_COMPRESS = True
+    info = await _finished(dq, downloads)
+    copy = os.path.realpath(downloads / 'v (smaller).mkv')
+    with patch('compress.compress_file', return_value=compress.CompressResult(100, 30, False, copy)) as run:
+        await dq.compress(info.url, 'medium')
+        await _settle(dq)
+    assert run.call_args.kwargs['output'] == copy
+    assert info.filename == 'v (smaller).mkv'
+    assert info.compression['original_kept'] is True
+
+
+async def test_old_completed_rows_are_cleared(queue):
+    dq, downloads = queue
+    dq.notifier.cleared = AsyncMock()
+    old = await _finished(dq, downloads)
+    old.timestamp = time.time_ns() - 3 * 86400 * 1_000_000_000
+    (downloads / 'n.mkv').write_bytes(b'x')
+    new = _info(url='http://example.com/n', id='n', status='finished', filename='n.mkv')
+    await dq.done.put(Download.record(new))
+    dq.config.CLEAR_COMPLETED_AFTER = 0
+    await dq.clear_expired()
+    assert dq.done.exists(old.url)
+    dq.config.CLEAR_COMPLETED_AFTER = 2 * 86400
+    await dq.clear_expired()
+    assert not dq.done.exists(old.url)
+    assert dq.done.exists(new.url)

@@ -1,41 +1,38 @@
-<div class="metube-section-header">
-  <button type="button" class="metube-section-toggle" (click)="toggleCollapsed()" [attr.aria-expanded]="!collapsed">
-    <span>Subscriptions</span>
-    <fa-icon [icon]="collapsed ? faChevronRight : faChevronDown" class="metube-section-chevron" />
-  </button>
-</div>
-@if (!collapsed) {
-  <div class="px-2 py-3 border-bottom">
+<div class="mh-list">
+  <div class="mh-bulkbar mh-toolbar">
     @if (checkingAllSubscriptions) {
-      <button type="button" class="btn btn-link text-decoration-none px-0 me-4" disabled>
+      <button type="button" class="btn btn-sm mh-bulk-btn" disabled>
         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Check all now
       </button>
     } @else {
-      <button type="button" class="btn btn-link text-decoration-none px-0 me-4"
+      <button type="button" class="btn btn-sm mh-bulk-btn"
         (click)="checkAllSubscriptions()"
         [disabled]="downloads.loading || cachedSubs.length === 0 || checkingSelectedSubscriptions">
         <fa-icon [icon]="faRedoAlt" />&nbsp; Check all now
       </button>
     }
+    @if (selectedSubscriptionIds.size > 0 || checkingSelectedSubscriptions) {
+    <span class="mh-bulk-count ms-2">{{ selectedSubscriptionIds.size }} selected</span>
     @if (checkingSelectedSubscriptions) {
-      <button type="button" class="btn btn-link text-decoration-none px-0 me-4" disabled>
+      <button type="button" class="btn btn-sm mh-bulk-btn" disabled>
         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Check selected
       </button>
     } @else {
-      <button type="button" class="btn btn-link text-decoration-none px-0 me-4"
+      <button type="button" class="btn btn-sm mh-bulk-btn"
         (click)="checkSelectedSubscriptions()"
         [disabled]="downloads.loading || selectedSubscriptionIds.size === 0 || checkingAllSubscriptions">
         <fa-icon [icon]="faRedoAlt" />&nbsp; Check selected
       </button>
     }
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4"
+    <button type="button" class="btn btn-sm mh-bulk-btn"
       (click)="deleteSelectedSubscriptions()"
       [disabled]="downloads.loading || selectedSubscriptionIds.size === 0">
       <fa-icon [icon]="faTrashAlt" />&nbsp; Delete selected
     </button>
+    }
   </div>
   <div class="overflow-auto">
-    <table class="table">
+    <table class="table mh-table">
       <thead>
         <tr>
           <th scope="col" style="width: 1rem;">
@@ -177,4 +174,7 @@
       </tbody>
     </table>
   </div>
-}
+  @if (cachedSubs.length === 0) {
+    <p class="empty-hint">No subscriptions yet. Paste a channel or playlist link above, then pick <strong>Subscribe to channel or playlist</strong> from the arrow beside Download.</p>
+  }
+</div>

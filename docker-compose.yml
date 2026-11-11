@@ -20,8 +20,17 @@ services:
       - "127.0.0.1:${MEDIAHARVEST_PORT:-8081}:8081"
     volumes:
       - "${MEDIAHARVEST_DOWNLOADS:-./downloads}:/downloads"
+      # History and settings, and the music and temporary-file folders. The
+      # Windows helper (windows/MediaHarvest.ps1) sets these when you choose
+      # folders in Settings; left unset, they are all in the download folder.
+      - "${MEDIAHARVEST_STATE:-${MEDIAHARVEST_DOWNLOADS:-./downloads}/.metube}:/state"
+      - "${MEDIAHARVEST_MUSIC:-${MEDIAHARVEST_DOWNLOADS:-./downloads}}:/music"
+      - "${MEDIAHARVEST_TEMP:-${MEDIAHARVEST_DOWNLOADS:-./downloads}}:/temp"
     environment:
       PUID: ${MEDIAHARVEST_UID:-1000}
       PGID: ${MEDIAHARVEST_GID:-1000}
+      STATE_DIR: /state
+      AUDIO_DOWNLOAD_DIR: ${MEDIAHARVEST_MUSIC_DIR:-/downloads}
+      TEMP_DIR: ${MEDIAHARVEST_TEMP_DIR:-/downloads}
       ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
       DEFAULT_THEME: "auto"

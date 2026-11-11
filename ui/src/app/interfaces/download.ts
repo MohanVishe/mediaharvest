@@ -9,6 +9,8 @@ export interface Compression {
   original_size?: number;
   size?: number;
   msg?: string;
+  // Settings, "Keep the original": the row shows the smaller copy.
+  original_kept?: boolean;
 }
 
 export interface Download {
@@ -52,4 +54,6 @@ export interface Download {
   compress_height?: string;
   // Set while and after the finished video is compressed (app/compress.py).
   compression?: Compression | null;
+  // A small picture of the video, when the site has one.
+  thumbnail?: string | null;
 }

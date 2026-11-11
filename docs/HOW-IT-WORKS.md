@@ -17,6 +17,16 @@ MediaHarvest is three programs working together inside one Docker container.
 The page and the server talk over a live connection (Socket.IO), so a progress
 bar moves without you reloading anything.
 
+On Windows there is a fourth part, outside the container: a small helper
+(`windows/MediaHarvest.ps1`) that the desktop shortcut runs. It starts Docker
+Desktop and MediaHarvest, opens the page, then waits in the background. The
+container cannot reach Windows, so when you press Close, Browse or Save and
+restart in Settings, the server leaves a request in a shared folder and the
+helper does it: stops everything, opens the Windows folder picker, or restarts
+the container with the new folders. The helper writes a heartbeat every few
+seconds; these buttons work only while it beats (`app/app_settings.py`,
+`HostHelper`).
+
 ## From link to file
 
 ```mermaid
@@ -214,11 +224,13 @@ detection, progress, the keep-or-replace rule), `CompressPP` in
 | What | Where |
 |---|---|
 | Your files | The download folder (`Downloads/MediaHarvest` with the installer) |
-| The Downloading and Completed lists, subscriptions | `.metube` inside the download folder |
-| Settings | Environment variables, see [CONFIGURATION.md](CONFIGURATION.md) |
+| The Downloading and Completed lists, subscriptions | `.metube` inside the download folder; with the Windows shortcut, `%LOCALAPPDATA%\MediaHarvest\state`, so they stay when you change the download folder |
+| The Settings page's choices | `settings.json` beside those lists (`app/app_settings.py`) |
+| The folders (Windows) | `%LOCALAPPDATA%\MediaHarvest\helper-config.json`, kept by the helper |
+| Everything else | Environment variables, see [CONFIGURATION.md](CONFIGURATION.md) |
 
 ## Checking the code works
 
-There are about 1,170 automatic tests: 1,002 for the server and 170 for the
+There are about 1,230 automatic tests: 1,056 for the server and 173 for the
 page. They run in Docker, and on GitHub for every change. See
 [CONTRIBUTING.md](../CONTRIBUTING.md).

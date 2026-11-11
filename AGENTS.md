@@ -78,8 +78,11 @@ app/dl_formats.py    — Maps those options onto yt-dlp format selectors and opt
 app/format_probe.py  — The link preview and the All formats picker (read-only)
 app/media_extras.py  — Extra yt-dlp postprocessors: disk check, smaller audio, lyrics, compression
 app/compress.py      — Makes videos smaller with ffmpeg (levels, per-stream command, GPU)
+app/app_settings.py  — The Settings page's choices (settings.json) and the Windows helper's files
+windows/MediaHarvest.ps1 — Windows helper: desktop shortcut, start/close, folder picker, restart with folders
 app/tests/           — pytest tests (asyncio_mode=auto)
 ui/src/app/          — Angular standalone components (no NgModules)
+ui/src/_mh-theme.sass — The page's look: colour tokens for light and dark, top bar, tabs, settings
 ```
 
 ## Key conventions

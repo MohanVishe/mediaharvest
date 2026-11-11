@@ -1,5 +1,6 @@
-import { DecimalPipe, KeyValuePipe } from '@angular/common';
+import { KeyValuePipe } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
@@ -11,21 +12,18 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
-  faChevronDown,
-  faChevronRight,
   faClock,
   faDownload,
   faExternalLinkAlt,
   faTrashAlt,
 } from '@fortawesome/free-solid-svg-icons';
-import { NgbProgressbar } from '@ng-bootstrap/ng-bootstrap';
+import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { merge } from 'rxjs';
 import { actionError } from '../action-result';
-import { catalogTypes, formatLabel } from '../catalog-labels';
+import { catalogTypes, formatLabel, typeIcon } from '../catalog-labels';
 import { Download } from '../interfaces';
 import { EtaPipe, SpeedPipe } from '../pipes';
 import { DownloadsService } from '../services/downloads.service';
-import { SettingsStore } from '../services/settings-store.service';
 import { ToastService } from '../services/toast.service';
 import { SelectAllCheckboxComponent } from './master-checkbox.component';
 import { ItemCheckboxComponent } from './slave-checkbox.component';
@@ -36,9 +34,8 @@ import { ItemCheckboxComponent } from './slave-checkbox.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     KeyValuePipe,
-    DecimalPipe,
     FontAwesomeModule,
-    NgbProgressbar,
+    NgbTooltip,
     EtaPipe,
     SpeedPipe,
     SelectAllCheckboxComponent,
@@ -47,20 +44,17 @@ import { ItemCheckboxComponent } from './slave-checkbox.component';
   templateUrl: './downloading-section.component.html',
   styleUrl: './downloading-section.component.sass',
 })
-export class DownloadingSectionComponent implements OnDestroy {
+export class DownloadingSectionComponent implements AfterViewInit, OnDestroy {
   readonly downloads = inject(DownloadsService);
   private toasts = inject(ToastService);
-  private settings = inject(SettingsStore);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
-  collapsed = this.settings.get('metube_downloading_collapsed') === 'true';
   selectedCount = 0;
   readonly masterCheckbox = viewChild<SelectAllCheckboxComponent>('queueMasterCheckboxRef');
+  private viewReady = false;
   private liveCountdownTimer?: ReturnType<typeof setInterval>;
 
-  readonly faChevronDown = faChevronDown;
-  readonly faChevronRight = faChevronRight;
   readonly faClock = faClock;
   readonly faDownload = faDownload;
   readonly faExternalLinkAlt = faExternalLinkAlt;
@@ -68,8 +62,9 @@ export class DownloadingSectionComponent implements OnDestroy {
 
   constructor() {
     this.downloads.queueChanged.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      // Undefined until the view exists; the first render reads the list itself.
-      this.masterCheckbox()?.selectionChanged();
+      // The box exists before its inputs are set; the first render reads the
+      // list itself.
+      if (this.viewReady) this.masterCheckbox()?.selectionChanged();
     });
     merge(this.downloads.queueChanged, this.downloads.updated, this.downloads.formatsChanged)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -78,6 +73,10 @@ export class DownloadingSectionComponent implements OnDestroy {
         this.cdr.markForCheck();
       });
     this.syncLiveCountdownTimer();
+  }
+
+  ngAfterViewInit() {
+    this.viewReady = true;
   }
 
   ngOnDestroy() {
@@ -98,11 +97,6 @@ export class DownloadingSectionComponent implements OnDestroy {
 
   selectionChanged(checked: number) {
     this.selectedCount = checked;
-  }
-
-  toggleCollapsed() {
-    this.collapsed = !this.collapsed;
-    this.settings.set('metube_downloading_collapsed', this.collapsed ? 'true' : 'false');
   }
 
   downloadItemByKey(id: string) {
@@ -139,6 +133,32 @@ export class DownloadingSectionComponent implements OnDestroy {
   // instead of showing a number that cannot move.
   isIndeterminate(download: Download): boolean {
     return download.status === 'preparing' || download.status === 'postprocessing';
+  }
+
+  readonly typeIcon = typeIcon;
+
+  // How far along the thumbnail's bottom edge the bar runs, or null for none
+  // (not started yet). Work with no percentage runs a moving bar instead.
+  progress(download: Download): number | null {
+    if (this.isIndeterminate(download)) return 100;
+    if (['downloading', 'compressing', 'resuming'].includes(download.status)) {
+      return Math.max(0, Math.min(100, download.percent ?? 0));
+    }
+    return null;
+  }
+
+  stateText(download: Download): string {
+    const percent = `${Math.round(download.percent ?? 0)}%`;
+    switch (download.status) {
+      case 'queued': return 'Queued';
+      case 'pending': return 'Not started';
+      case 'preparing': return 'Starting';
+      case 'downloading': return percent;
+      case 'postprocessing': return 'Finishing';
+      case 'compressing': return `Compressing ${percent}`;
+      case 'resuming': return 'Reconnecting';
+      default: return download.status;
+    }
   }
 
   liveCountdownSeconds(download: Download): number | null {

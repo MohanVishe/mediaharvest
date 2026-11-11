@@ -11,12 +11,14 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
+  faCheck,
   faCheckCircle,
   faChevronDown,
   faChevronRight,
   faCompress,
   faCopy,
   faDownload,
+  faEllipsis,
   faExternalLinkAlt,
   faRedoAlt,
   faShareNodes,
@@ -30,7 +32,6 @@ import {
   NgbDropdownItem,
   NgbDropdownMenu,
   NgbDropdownToggle,
-  NgbProgressbar,
   NgbTooltip,
 } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, from, merge, mergeMap, tap } from 'rxjs';
@@ -40,6 +41,7 @@ import {
   downloadTypeLabel,
   formatCodecLabel,
   formatQualityLabel,
+  typeIcon,
 } from '../catalog-labels';
 import { Download, Option, Status } from '../interfaces';
 import { EtaPipe, FileSizePipe } from '../pipes';
@@ -67,7 +69,6 @@ import { ItemCheckboxComponent } from './slave-checkbox.component';
     NgbDropdownToggle,
     NgbDropdownMenu,
     NgbDropdownItem,
-    NgbProgressbar,
     FileSizePipe,
     EtaPipe,
     SelectAllCheckboxComponent,
@@ -83,7 +84,6 @@ export class CompletedSectionComponent {
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
-  collapsed = this.settings.get('metube_completed_collapsed') === 'true';
   sortAscending = this.settings.get('metube_sort_ascending') === 'true';
   selectedCount = 0;
   // Clear completed / Clear failed / Retry failed act on exactly these rows.
@@ -97,7 +97,10 @@ export class CompletedSectionComponent {
   lastCopiedErrorId: string | null = null;
   readonly masterCheckbox = viewChild<SelectAllCheckboxComponent>('doneMasterCheckboxRef');
 
+  readonly faCheck = faCheck;
   readonly faCheckCircle = faCheckCircle;
+  readonly faEllipsis = faEllipsis;
+  readonly typeIcon = typeIcon;
   readonly faChevronDown = faChevronDown;
   readonly faChevronRight = faChevronRight;
   readonly faCopy = faCopy;
@@ -492,11 +495,6 @@ export class CompletedSectionComponent {
     this.sortAscending = !this.sortAscending;
     this.settings.set('metube_sort_ascending', this.sortAscending ? 'true' : 'false');
     this.rebuildSortedDone();
-  }
-
-  toggleCollapsed() {
-    this.collapsed = !this.collapsed;
-    this.settings.set('metube_completed_collapsed', this.collapsed ? 'true' : 'false');
   }
 
   private rebuildSortedDone() {

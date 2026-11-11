@@ -7,17 +7,35 @@ the page. For what happens behind the page, see
 
 ## Contents
 
+- [The page](#the-page)
 - [Paste a link](#paste-a-link)
 - [Video](#video)
 - [Making videos smaller (Compress)](#making-videos-smaller-compress)
 - [Audio](#audio)
 - [Captions and Thumbnail](#captions-and-thumbnail)
 - [All formats](#all-formats)
-- [Advanced Options](#advanced-options)
+- [More options](#more-options)
 - [Playlists, channels and subscriptions](#playlists-channels-and-subscriptions)
 - [Downloading](#downloading)
 - [Completed](#completed)
+- [Settings](#settings)
+- [Opening and closing it on Windows](#opening-and-closing-it-on-windows)
 - [On your phone or as an app](#on-your-phone-or-as-an-app)
+
+## The page
+
+At the top: the link box with **Video**, **Audio**, **Captions** and
+**Thumbnail**, and one line saying what the next download will be, for example
+*Video · MP4 · 1080p · Compress: Medium*. Click **Options** on that line to
+change format, quality, subtitles or compression. **More options** inside it
+has the rest.
+
+Below are three tabs: **Downloading**, **Completed** and **Subscriptions**, each
+with how many items it holds. Adding a download switches to Downloading.
+
+The buttons at the top right are **Settings** (the gear), the theme (light,
+dark or following your system) and **Close** (the power button, which works
+when MediaHarvest was opened with its Windows shortcut).
 
 ## Paste a link
 
@@ -116,9 +134,9 @@ searching), the **Language**, and the **Subtitle Source**: written by people
 frame rate, HDR, codec, bitrate and file size, with the best and the smallest
 marked. Pick a video and a sound stream and download exactly those.
 
-## Advanced Options
+## More options
 
-Click **Advanced Options** under the buttons.
+Click **Options** on the line under the link box, then **More options**.
 
 | Option | What it does |
 |---|---|
@@ -141,16 +159,18 @@ Paste a playlist or channel link and every item is added. The arrow next to
 Download has more actions:
 - **Pick from playlist** shows the items first, so you can choose some.
 - **Subscribe to channel or playlist** checks it regularly and downloads new
-  uploads by itself. The **Subscriptions** list at the bottom shows each one,
-  when it was last checked, and lets you check now or remove it. Under
-  Advanced Options you can set how often it checks, only take titles that
-  match a pattern, and skip members-only videos.
+  uploads by itself. The **Subscriptions** tab shows each one, when it was
+  last checked, and lets you check now or remove it. Under More options you
+  can set how often it checks, only take titles that match a pattern, and skip
+  members-only videos.
 
 ## Downloading
 
-Each download shows a progress bar, the speed and the time left. Up to three
-run at once; the rest wait their turn. Cancel one, or several at once with the
-boxes on the left.
+Each download shows the video's picture with a line along its bottom edge that
+fills up as it downloads, then the speed and the time left. A moving line means
+work with no percentage to show, such as starting or finishing. Up to three run
+at once; the rest wait their turn. Cancel one with its bin button, or tick
+several: **Start selected** and **Cancel selected** appear above the list.
 
 **When a download stops, it carries on.** YouTube's download links run out
 after about 6 hours, and networks drop. MediaHarvest then shows *Reconnecting*,
@@ -160,7 +180,7 @@ nothing is downloaded twice. The waits grow from 15 seconds to 5 minutes. After
 continues from the part already saved. A restart of the computer works the
 same way.
 
-While a video is being compressed, its bar says **Compressing** with a
+While a video is being compressed, its row says **Compressing** with a
 percentage.
 
 ## Completed
@@ -169,17 +189,57 @@ Finished downloads move here.
 
 - **Click the title** (or the download arrow) to save the file to the device
   you're using. Files are also in the download folder on the computer.
-- **Share** sends the file to another app (on phones and some browsers).
+- **⋯** on a row holds **Share** (sends the file to another app, on phones and
+  some browsers), **Open the page it came from** and **Remove from list**.
 - **Compress** (the arrows-pointing-in button) makes a finished video
   smaller: choose a **Resolution** at the top of the menu if you like, then a
   level. The row shows the progress, then for example *"Compressed (Medium):
   97.50 MB → 58.82 MB, 40% smaller"*.
-- A failed download shows a red cross. Click it for the reason, copy the
+- A failed download says **Failed**. Click it for the reason, copy the
   details, or press **Retry**.
-- **Clear completed**, **Clear failed**, **Retry failed** and **Download
-  Selected** work on many rows at once; the sort button switches between
-  newest and oldest first. Removing a row keeps the file unless your
-  administrator set it otherwise.
+- Tick rows for **Save selected** and **Remove selected**. The **⋯** above the
+  list has **Clear completed**, **Clear failed** and **Retry failed**. The sort
+  button switches between newest and oldest first. Whether removing a row also
+  deletes its file is up to [Settings](#settings).
+
+## Settings
+
+The gear at the top right. Changes save as you make them.
+
+**Folders** (on Windows, when MediaHarvest was opened with its desktop
+shortcut). Type a folder or press **Browse** to pick one, then **Save and
+restart**. MediaHarvest restarts in about ten seconds and the page reloads by
+itself. Downloads that were running continue, and the lists are kept.
+
+| Folder | What goes there |
+|---|---|
+| **Downloads** | Videos, and music too unless a music folder is set |
+| **Music** | Audio downloads, when set |
+| **Working files** | Downloads while they are being put together, before they move to their folder. A fast drive helps. Empty means the download folder |
+
+Without the shortcut (on Linux or a server, for example), the folders are set
+where MediaHarvest is installed. See
+[CONFIGURATION.md](CONFIGURATION.md#directories).
+
+**Files**
+
+| Setting | Choices |
+|---|---|
+| **Removing an item from Completed** | Keep the file, ask each time, or delete the file |
+| **Keep the original after compressing** | Off: the smaller video replaces it. On: the smaller copy is saved beside it, named *"… (smaller)"* |
+| **Clear the Completed list** | Never, or after a day, a week, 30 or 90 days. Only the list: files stay unless the first setting deletes them |
+| **Keep partial files** | Off: the parts of a cancelled or failed download are deleted. On: they stay, so adding the same video again continues where it stopped |
+
+## Opening and closing it on Windows
+
+The installer puts one **MediaHarvest** shortcut on the desktop. It starts
+Docker Desktop if needed, then MediaHarvest, and opens the page in your
+browser. A small helper stays in the background (no window) so the page can
+close MediaHarvest and pick folders.
+
+To close: the **power button** at the top of the page. It stops MediaHarvest,
+then Docker Desktop if nothing else is running in it. If downloads are still
+running it says so first. They continue the next time you open MediaHarvest.
 
 ## On your phone or as an app
 

@@ -4,8 +4,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
-  faChevronDown,
-  faChevronRight,
   faPause,
   faPlay,
   faRedoAlt,
@@ -16,7 +14,6 @@ import { finalize } from 'rxjs';
 import { actionError } from '../action-result';
 import { SubscriptionRow } from '../interfaces/subscription';
 import { DownloadsService } from '../services/downloads.service';
-import { SettingsStore } from '../services/settings-store.service';
 import { SubscriptionsService } from '../services/subscriptions.service';
 import { ToastService } from '../services/toast.service';
 
@@ -37,12 +34,10 @@ export class SubscriptionsSectionComponent {
   readonly downloads = inject(DownloadsService);
   private subscriptionsSvc = inject(SubscriptionsService);
   private toasts = inject(ToastService);
-  private settings = inject(SettingsStore);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
   readonly subscriptionNameMaxLength = 200;
-  collapsed = this.settings.get('metube_subscriptions_collapsed') === 'true';
   cachedSubs: [string, SubscriptionRow][] = [];
   selectedSubscriptionIds = new Set<string>();
   checkingSubscriptionIds = new Set<string>();
@@ -53,8 +48,6 @@ export class SubscriptionsSectionComponent {
   editingNameId: string | null = null;
   nameEditDraft = '';
 
-  readonly faChevronDown = faChevronDown;
-  readonly faChevronRight = faChevronRight;
   readonly faPause = faPause;
   readonly faPlay = faPlay;
   readonly faRedoAlt = faRedoAlt;
@@ -305,8 +298,4 @@ export class SubscriptionsSectionComponent {
     });
   }
 
-  toggleCollapsed() {
-    this.collapsed = !this.collapsed;
-    this.settings.set('metube_subscriptions_collapsed', this.collapsed ? 'true' : 'false');
-  }
 }

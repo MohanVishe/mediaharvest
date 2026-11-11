@@ -656,7 +656,28 @@ _DOWNLOAD_INFO_DEFAULTS: dict[str, Any] = {
     "eta": None,
     "size": None,
     "error": None,
+    "thumbnail": None,
 }
+
+
+_YOUTUBE_ID = re.compile(r'(?:[?&]v=|youtu\.be/|/shorts/|/live/|/embed/)([A-Za-z0-9_-]{11})')
+
+
+def thumbnail_url(entry, url):
+    """A small picture for the row: YouTube's own 320px one for a YouTube
+    link, otherwise the one yt-dlp found. None when there is neither."""
+    url = url or ''
+    match = _YOUTUBE_ID.search(url)
+    if match and ('youtube.' in url or 'youtu.be' in url):
+        return f'https://i.ytimg.com/vi/{match.group(1)}/mqdefault.jpg'
+    if isinstance(entry, dict):
+        thumb = entry.get('thumbnail')
+        if not thumb:
+            thumbs = [t for t in entry.get('thumbnails') or [] if isinstance(t, dict) and t.get('url')]
+            thumb = thumbs[-1]['url'] if thumbs else None
+        if isinstance(thumb, str) and thumb.startswith(('https://', 'http://')):
+            return thumb
+    return None
 
 
 class DownloadInfo:
@@ -739,6 +760,7 @@ class DownloadInfo:
         self.live_status = live_status
         self.live_release_timestamp = live_release_timestamp
         self.subtitle_files = []
+        self.thumbnail = thumbnail_url(entry, url)
 
     # Fields that are useful server-side but must not be broadcast to browser
     # clients: ``entry`` is the full yt-dlp info-dict (potentially large and
@@ -804,6 +826,8 @@ class DownloadInfo:
                 self.ytdl_options_presets = [str(x).strip() for x in legacy_preset if str(x).strip()]
             else:
                 self.ytdl_options_presets = []
+        if not self.thumbnail:
+            self.thumbnail = thumbnail_url(self.entry, self.url)
         compression = self.__dict__.get('compression')
         if isinstance(compression, dict) and compression.get('state') == 'running':
             # Saved while compressing, and the server stopped before it ended:
@@ -858,6 +882,7 @@ _PERSISTED_DOWNLOAD_FIELDS = (
     "filename",
     "size",
     "chapter_files",
+    "thumbnail",
 )
 
 
@@ -911,6 +936,8 @@ def _download_info_from_record(record: dict[str, Any]) -> DownloadInfo:
 
 class Download:
     manager = None
+    # Settings, "Keep the original" after compressing; set per download.
+    keep_original = False
 
     @classmethod
     def shutdown_manager(cls):
@@ -1119,7 +1146,8 @@ class Download:
             ydl.add_post_processor(
                 CompressPP(ydl, preset, report=self._report_compression,
                            max_height=format_catalog.compress_max_height(
-                               getattr(self.info, 'compress_height', 'keep'))),
+                               getattr(self.info, 'compress_height', 'keep')),
+                           keep_original=self.keep_original),
                 when='post_process')
         return ydl
 
@@ -1909,7 +1937,10 @@ class DownloadQueue:
 
     async def _post_download_cleanup(self, download):
         if download.info.status != 'finished':
-            if download.tmpfilename and os.path.isfile(download.tmpfilename):
+            # Settings, "Keep partial files": a later download of the same
+            # video continues from them instead of starting over.
+            keep_partial = getattr(self.config, 'KEEP_PARTIAL_FILES', False) is True
+            if not keep_partial and download.tmpfilename and os.path.isfile(download.tmpfilename):
                 try:
                     os.remove(download.tmpfilename)
                 except OSError:
@@ -1940,6 +1971,18 @@ class DownloadQueue:
                         self.__auto_clear_after_delay(download.info.url, clear_after),
                         name="auto_clear",
                     )
+
+    async def clear_expired(self):
+        """Remove Completed rows older than CLEAR_COMPLETED_AFTER seconds."""
+        clear_after = self.config.CLEAR_COMPLETED_AFTER
+        if clear_after <= 0:
+            return
+        cutoff = time.time_ns() - clear_after * 1_000_000_000
+        old = [key for key, dl in list(self.done.items())
+               if (getattr(dl.info, 'timestamp', 0) or 0) < cutoff and key not in self._compressing]
+        if old:
+            log.info('Clearing %d Completed rows older than %d seconds', len(old), clear_after)
+            await self.clear(old)
 
     async def __auto_clear_after_delay(self, url, delay_seconds):
         await asyncio.sleep(delay_seconds)
@@ -2051,6 +2094,7 @@ class DownloadQueue:
             log.info(f'playlist limit is set. Processing only first {playlist_item_limit} entries')
             ytdl_options['playlistend'] = playlist_item_limit
         download = Download(dldirectory, self.config.TEMP_DIR, output, output_chapter, dl.quality, dl.format, ytdl_options, dl, allow_private=self.config.ALLOW_PRIVATE_ADDRESSES)
+        download.keep_original = getattr(self.config, 'KEEP_ORIGINAL_AFTER_COMPRESS', False) is True
         is_upcoming = (
             getattr(dl, 'live_status', None) == 'is_upcoming'
             or getattr(dl, 'status', None) == 'scheduled'
@@ -2406,10 +2450,12 @@ class DownloadQueue:
                                 'percent': round(progress.percent, 1), 'eta': progress.eta}
             asyncio.run_coroutine_threadsafe(self.notifier.completed(info), loop)
 
+        # Settings, "Keep the original": the smaller copy goes beside it.
+        output = compress.smaller_copy_path(path) if getattr(self.config, 'KEEP_ORIGINAL_AFTER_COMPRESS', False) is True else None
         try:
             result = await loop.run_in_executor(
                 None, partial(compress.compress_file, path, preset, on_progress, stop.is_set,
-                              max_height=height))
+                              output=output, max_height=height))
         except compress.CompressError as exc:
             info.compression = {'state': 'error', 'preset': preset, 'height': height, 'msg': str(exc)}
         except Exception as exc:  # pylint: disable=broad-except
@@ -2425,8 +2471,11 @@ class DownloadQueue:
                 'size': result.size,
             }
             info.size = result.size
+            if output and not result.kept_original:
+                info.compression['original_kept'] = True
             if result.path and result.path != path:
-                # Any device turned an .mkv or .webm into an .mp4.
+                # Any device turned an .mkv or .webm into an .mp4, or the
+                # original was kept and the row now shows the smaller copy.
                 info.filename = os.path.join(os.path.dirname(info.filename), os.path.basename(result.path))
         finally:
             self._compressing.pop(id, None)

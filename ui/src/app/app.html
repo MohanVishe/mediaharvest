@@ -1,59 +1,32 @@
-<nav class="navbar navbar-expand-md navbar-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand d-flex align-items-center" href="#">
-      <img src="assets/icons/logo.svg" alt="" height="32" width="32" class="me-2">
-      MediaHarvest
+<header class="mh-topbar">
+  <div class="mh-topbar-inner">
+    <a class="mh-brand" href="#">
+      <img src="assets/icons/logo.svg" alt="" height="28" width="28">
+      <span>MediaHarvest</span>
     </a>
-    <div class="download-metrics">
+    <div class="mh-status download-metrics" aria-live="polite">
       @if (activeDownloads > 0) {
-        <div class="metric">
-          <fa-icon [icon]="faDownload" class="text-primary" />
-          <span>{{activeDownloads}} downloading</span>
-        </div>
+        <span class="metric"><span class="mh-live-dot" aria-hidden="true"></span>{{activeDownloads}} downloading</span>
       }
       @if (queuedDownloads > 0) {
-        <div class="metric">
-          <fa-icon [icon]="faClock" class="text-warning" />
-          <span>{{queuedDownloads}} queued</span>
-        </div>
-      }
-      @if (completedDownloads > 0) {
-        <div class="metric">
-          <fa-icon [icon]="faCheck" class="text-success" />
-          <span>{{completedDownloads}} completed</span>
-        </div>
-      }
-      @if (failedDownloads > 0) {
-        <div class="metric">
-          <fa-icon [icon]="faTimesCircle" class="text-danger" />
-          <span>{{failedDownloads}} failed</span>
-        </div>
+        <span class="metric">{{queuedDownloads}} waiting</span>
       }
       @if ((totalSpeed | speed) !== '') {
-        <div class="metric">
-          <fa-icon [icon]="faTachometerAlt" class="text-info" />
-          <span>{{totalSpeed | speed }}</span>
-        </div>
+        <span class="metric mh-mono">{{totalSpeed | speed }}</span>
+      }
+      @if (failedDownloads > 0) {
+        <span class="metric text-danger">{{failedDownloads}} failed</span>
       }
     </div>
-    <!--
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsDefault" aria-controls="navbarsDefault" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarsDefault">
-      <ul class="navbar-nav mr-auto">
-        <li class="nav-item active">
-          <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
-        </li>
-      </ul>
-    </div>
-    -->
-    <div class="navbar-nav ms-auto">
-      <div class="nav-item dropdown" ngbDropdown placement="bottom-end">
-        <button class="btn btn-link nav-link py-2 px-0 px-sm-2 dropdown-toggle d-flex align-items-center"
+    <div class="mh-topbar-actions">
+      <button type="button" class="mh-icon-btn" (click)="openSettings(settingsDialog)" aria-label="Settings" ngbTooltip="Settings">
+        <fa-icon [icon]="faGear" />
+      </button>
+      <div class="dropdown" ngbDropdown placement="bottom-end">
+        <button class="mh-icon-btn"
           id="theme-select"
           type="button"
-          aria-expanded="false"
+          aria-label="Theme" ngbTooltip="Theme"
           ngbDropdownToggle>
           @if(activeTheme){
           <fa-icon [icon]="activeTheme.icon" />
@@ -79,13 +52,16 @@
           }
         </ul>
       </div>
+      <button type="button" class="mh-icon-btn mh-danger" (click)="confirmClose(closeDialog)" aria-label="Close MediaHarvest" ngbTooltip="Close MediaHarvest">
+        <fa-icon [icon]="faPowerOff" />
+      </button>
     </div>
   </div>
-</nav>
+</header>
 
-<main role="main" class="container container-xl">
-  <form #f="ngForm">
-    <div class="container add-url-box">
+<main role="main" class="mh-main">
+  <form #f="ngForm" class="mh-add">
+    <div class="add-url-box">
       <!-- Main URL Input with Download Button -->
       <div class="row mb-4">
         <div class="col">
@@ -228,7 +204,7 @@
 
       <!-- What to save: one tap picks the kind of download. -->
       @if (catalog) {
-      <div class="type-switch-row mb-3">
+      <div class="type-switch-row">
         <div class="btn-group type-switch" role="radiogroup" aria-label="What to download">
           @for (type of downloadTypes; track type.id) {
             <input type="radio" class="btn-check" name="downloadType"
@@ -242,9 +218,16 @@
             </label>
           }
         </div>
+        <button type="button" class="mh-options-toggle" (click)="toggleOptions()"
+          [attr.aria-expanded]="isOptionsOpen" aria-controls="downloadOptions">
+          <span class="mh-summary">{{ optionsSummary() }}</span>
+          <span class="mh-options-label">{{ isOptionsOpen ? 'Hide options' : 'Options' }}
+            <fa-icon [icon]="isOptionsOpen ? faChevronDown : faChevronRight" class="ms-1" /></span>
+        </button>
       </div>
       }
 
+      <div id="downloadOptions" class="mh-options" [ngbCollapse]="!isOptionsOpen">
       <!-- Options Row: built from the server's catalog. Each type shows the
            fields it carries, in the order Format, Quality, Tags, Lyrics,
            Subtitles, Language, Subtitle Source. Codec is under Advanced. -->
@@ -407,7 +390,7 @@
             (click)="toggleAdvanced()"
             [attr.aria-expanded]="isAdvancedOpen"
             aria-controls="advancedOptions">
-            Advanced Options
+            More options
             <fa-icon
               [icon]="isAdvancedOpen ? faChevronDown : faChevronRight"
               class="ms-1" />
@@ -714,23 +697,33 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </form>
 
-  @if (downloads.loading) {
-    <div class="alert alert-info" role="alert">
-      Connecting to server...
+  <section class="mh-lists">
+    <div class="mh-tabs" role="tablist" aria-label="Downloads">
+      <button type="button" role="tab" class="mh-tab" [class.active]="activeTab === 'queue'"
+        [attr.aria-selected]="activeTab === 'queue'" (click)="selectTab('queue')">
+        Downloading <span class="mh-count">{{ downloads.queue.size }}</span>
+      </button>
+      <button type="button" role="tab" class="mh-tab" [class.active]="activeTab === 'done'"
+        [attr.aria-selected]="activeTab === 'done'" (click)="selectTab('done')">
+        Completed <span class="mh-count">{{ downloads.done.size }}</span>
+      </button>
+      <button type="button" role="tab" class="mh-tab" [class.active]="activeTab === 'subscriptions'"
+        [attr.aria-selected]="activeTab === 'subscriptions'" (click)="selectTab('subscriptions')">
+        Subscriptions <span class="mh-count">{{ subscriptionsSvc.subscriptions.size }}</span>
+      </button>
     </div>
-  }
-  <app-downloading-section />
-
-  <app-completed-section />
-
-  <app-subscriptions-section />
+    <div role="tabpanel" [hidden]="activeTab !== 'queue'"><app-downloading-section /></div>
+    <div role="tabpanel" [hidden]="activeTab !== 'done'"><app-completed-section /></div>
+    <div role="tabpanel" [hidden]="activeTab !== 'subscriptions'"><app-subscriptions-section /></div>
+  </section>
 </main><!-- /.container -->
 
-<footer class="footer navbar-dark bg-dark py-3 mt-5">
-  <div class="container text-center">
+<footer class="footer">
+  <div class="mh-footer-inner">
     @if (ytDlpVersion && metubeVersion) {
       <div class="footer-content">
         <div class="version-item">
@@ -763,3 +756,157 @@
 </footer>
 
 <app-toast-container />
+
+@if (pageState === 'connecting' && downloads.loading) {
+  <div class="mh-overlay" role="status">
+    <div>
+      <img src="assets/icons/logo.svg" alt="" width="48" height="48" class="mh-pulse">
+      <p class="mh-overlay-title">Connecting to MediaHarvest</p>
+      <p class="mh-overlay-text">Starting up. This takes a few seconds after the computer starts.</p>
+    </div>
+  </div>
+}
+@if (pageState === 'restarting') {
+  <div class="mh-overlay" role="status">
+    <div>
+      <span class="spinner-border text-primary" aria-hidden="true"></span>
+      <p class="mh-overlay-title">Restarting with the new folders</p>
+      <p class="mh-overlay-text">Downloads that were running continue by themselves. This page reloads when MediaHarvest is back.</p>
+    </div>
+  </div>
+}
+@if (pageState === 'closed') {
+  <div class="mh-overlay" role="status">
+    <div>
+      <img src="assets/icons/logo.svg" alt="" width="48" height="48">
+      <p class="mh-overlay-title">MediaHarvest is closed</p>
+      <p class="mh-overlay-text">You can close this tab. Open it again with "MediaHarvest" on the desktop; unfinished downloads continue then.</p>
+    </div>
+  </div>
+}
+
+<ng-template #closeDialog let-modal>
+  <div class="modal-header">
+    <h2 class="modal-title fs-5">Close MediaHarvest?</h2>
+    <button type="button" class="btn-close" aria-label="Cancel" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    @if (hostHelper()) {
+      <p class="mb-2">This stops MediaHarvest and Docker Desktop.</p>
+      @if (activeDownloads + queuedDownloads > 0) {
+        <p class="mb-0 text-body-secondary">{{ activeDownloads + queuedDownloads }} {{ activeDownloads + queuedDownloads === 1 ? 'download is' : 'downloads are' }} not finished. They continue the next time you open MediaHarvest.</p>
+      }
+    } @else {
+      <p class="mb-0">Closing from here works when MediaHarvest was opened with its desktop shortcut. Open it once with "MediaHarvest" on the desktop, then this button closes it and Docker Desktop.</p>
+    }
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">{{ hostHelper() ? 'Cancel' : 'OK' }}</button>
+    @if (hostHelper()) {
+      <button type="button" class="btn btn-danger" (click)="modal.close(true)">Close MediaHarvest</button>
+    }
+  </div>
+</ng-template>
+
+<ng-template #settingsDialog let-modal>
+  <div class="modal-header">
+    <h2 class="modal-title fs-5">Settings</h2>
+    <button type="button" class="btn-close" aria-label="Close settings" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body mh-settings">
+    @if (!settingsPage) {
+      <div class="d-flex align-items-center gap-2 text-body-secondary">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Loading settings
+      </div>
+    } @else {
+      <div class="mh-settings-group">
+        <div class="mh-settings-title">Folders</div>
+        @if (settingsPage.folders && folderDraft) {
+          <p class="mh-settings-hint">Where files go on this computer. Saving restarts MediaHarvest; downloads that are running continue afterwards.</p>
+          @for (f of folderFields; track f.kind) {
+            <div class="mb-3">
+              <label class="mh-folder-label" [for]="'folder-' + f.kind">{{ f.label }}</label>
+              <div class="input-group">
+                <input type="text" class="form-control mh-mono" [id]="'folder-' + f.kind" [name]="'folder-' + f.kind"
+                  [(ngModel)]="folderDraft[f.kind]" [placeholder]="f.placeholder" spellcheck="false" autocomplete="off">
+                <button type="button" class="btn btn-outline-secondary" (click)="browseFolder(f.kind)" [disabled]="browsingFolder !== null">
+                  @if (browsingFolder === f.kind) {
+                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                  }
+                  Browse
+                </button>
+              </div>
+              <div class="mh-setting-help mt-1">{{ f.help }}</div>
+            </div>
+          }
+          <div class="d-flex justify-content-end gap-2">
+            @if (foldersChanged()) {
+              <button type="button" class="btn btn-outline-secondary" (click)="resetFolders()">Undo</button>
+            }
+            <button type="button" class="btn btn-primary" (click)="saveFolders(modal)" [disabled]="!foldersChanged() || savingFolders">
+              Save and restart
+            </button>
+          </div>
+        } @else {
+          <p class="mh-settings-hint mb-0">Open MediaHarvest with its desktop shortcut to choose folders here. Without it, they are set where MediaHarvest is installed: <span class="mh-mono">MEDIAHARVEST_DOWNLOADS</span> in its <span class="mh-mono">.env</span> file.</p>
+        }
+      </div>
+
+      <div class="mh-settings-group">
+        <div class="mh-settings-title">Files</div>
+        <div class="mh-setting-row">
+          <div>
+            <div class="mh-setting-label">Removing an item from Completed</div>
+            <div class="mh-setting-help">Whether its file on this computer is deleted too</div>
+          </div>
+          <select class="form-select" name="deleteFiles" [ngModel]="settingsPage.settings.delete_files"
+            (ngModelChange)="saveSetting('delete_files', $event)" aria-label="Removing an item from Completed">
+            <option value="never">Keep the file</option>
+            <option value="ask">Ask each time</option>
+            <option value="always">Delete the file</option>
+          </select>
+        </div>
+        <div class="mh-setting-row">
+          <div>
+            <div class="mh-setting-label">Keep the original after compressing</div>
+            <div class="mh-setting-help">The smaller copy is saved beside it, named "… (smaller)"</div>
+          </div>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" name="keepOriginal" aria-label="Keep the original after compressing"
+              [ngModel]="settingsPage.settings.keep_original" (ngModelChange)="saveSetting('keep_original', $event)">
+          </div>
+        </div>
+        <div class="mh-setting-row">
+          <div>
+            <div class="mh-setting-label">Clear the Completed list</div>
+            <div class="mh-setting-help">Only the list; files stay unless set above</div>
+          </div>
+          <select class="form-select" name="clearCompleted" [ngModel]="settingsPage.settings.clear_completed_days"
+            (ngModelChange)="saveSetting('clear_completed_days', $event)" aria-label="Clear the Completed list">
+            @if (settingsPage.settings.clear_completed_days === null) {
+              <option [ngValue]="null" disabled>As set in .env</option>
+            }
+            @for (d of clearDayOptions(); track d.days) {
+              <option [ngValue]="d.days">{{ d.text }}</option>
+            }
+          </select>
+        </div>
+        <div class="mh-setting-row">
+          <div>
+            <div class="mh-setting-label">Keep partial files</div>
+            <div class="mh-setting-help">From cancelled or failed downloads, so adding the video again continues where it stopped</div>
+          </div>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" name="keepPartial" aria-label="Keep partial files"
+              [ngModel]="settingsPage.settings.keep_partial_files" (ngModelChange)="saveSetting('keep_partial_files', $event)">
+          </div>
+        </div>
+      </div>
+
+      <div class="mh-settings-group">
+        <div class="mh-settings-title">About</div>
+        <div class="mh-setting-help mh-mono">MediaHarvest {{ metubeVersion }} · yt-dlp {{ ytDlpVersion }}</div>
+      </div>
+    }
+  </div>
+</ng-template>

@@ -173,10 +173,11 @@ class CompressPP(PostProcessor):
     ('result', dict) once at the end; the dict is DownloadInfo.compression.
     """
 
-    def __init__(self, downloader, preset: str, report=None, max_height=None):
+    def __init__(self, downloader, preset: str, report=None, max_height=None, keep_original=False):
         super().__init__(downloader)
         self._preset = preset
         self._max_height = max_height
+        self._keep_original = keep_original
         self._report = report or (lambda kind, value: None)
 
     @classmethod
@@ -187,10 +188,11 @@ class CompressPP(PostProcessor):
         path = info.get('filepath')
         if not path or not os.path.isfile(path):
             return [], info
+        output = compress.smaller_copy_path(path) if self._keep_original else None
         try:
             result = compress.compress_file(
                 path, self._preset, on_progress=lambda p: self._report('progress', p),
-                max_height=self._max_height)
+                output=output, max_height=self._max_height)
         except compress.CompressError as exc:
             self.report_warning(f'Not compressed: {exc}')
             self._report('result', {'state': 'error', 'preset': self._preset,
@@ -202,13 +204,18 @@ class CompressPP(PostProcessor):
             'height': self._max_height,
             'original_size': result.original_size,
             'size': result.size,
+            **({'original_kept': True} if output and not result.kept_original else {}),
         })
         if result.path and result.path != path:
-            # Any device writes an .mp4 in place of an .mkv or .webm: point
-            # MoveFiles, and so the Completed row, at the new file.
+            # Any device writes an .mp4 in place of an .mkv or .webm, or the
+            # original is kept beside a smaller copy: point MoveFiles, and so
+            # the Completed row, at the new file. A kept original still moves.
             moves = info.get('__files_to_move')
             if isinstance(moves, dict):
-                moves.pop(path, None)
+                if output:
+                    moves.setdefault(path, None)
+                else:
+                    moves.pop(path, None)
             info['filepath'] = result.path
             info['ext'] = os.path.splitext(result.path)[1].lstrip('.')
         return [], info

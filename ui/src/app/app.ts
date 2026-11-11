@@ -1,16 +1,16 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, afterNextRender, viewChild, viewChildren, inject, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, TemplateRef, afterNextRender, viewChild, viewChildren, inject, OnDestroy, OnInit } from '@angular/core';
 import { Observable, OperatorFunction, Subject, Subscription, from, map, merge, of, debounceTime, distinctUntilChanged, filter, finalize, mergeMap, switchMap, tap } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModal, NgbModule, NgbTypeahead } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { IconDefinition, faTrashAlt, faCheckCircle, faTimesCircle, faCheck, faDownload, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faChevronRight, faChevronDown, faUpload, faSlidersH, faListUl, faRss, faFilm, faMusic, faClosedCaptioning, faImage } from '@fortawesome/free-solid-svg-icons';
+import { IconDefinition, faTrashAlt, faCheckCircle, faTimesCircle, faCheck, faDownload, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faChevronRight, faChevronDown, faUpload, faSlidersH, faListUl, faRss, faGear, faPowerOff } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
-import { ADD_REQUEST_CONCURRENCY, AddDownloadPayload, DownloadsService, ProbePayload, ProbeResult } from './services/downloads.service';
+import { ADD_REQUEST_CONCURRENCY, AddDownloadPayload, AppSettings, DownloadsService, Folders, ProbePayload, ProbeResult, SettingsPage } from './services/downloads.service';
 
 // What the link preview shows for a pasted URL.
 export interface LinkPreview {
@@ -20,12 +20,6 @@ export interface LinkPreview {
   summary: { title: string; thumbnail: string; meta: string; counts: string } | null;
 }
 
-const TYPE_ICONS: Record<string, IconDefinition> = {
-  video: faFilm,
-  audio: faMusic,
-  captions: faClosedCaptioning,
-  thumbnail: faImage,
-};
 import { MeTubeSocket } from './services/metube-socket.service';
 import { SubscriptionsService } from './services/subscriptions.service';
 import { ToastService } from './services/toast.service';
@@ -42,6 +36,7 @@ import {
   FormatOption,
 } from './interfaces';
 import { SpeedPipe } from './pipes';
+import { typeIcon } from './catalog-labels';
 import {
   ToastContainerComponent,
   PlaylistBrowserComponent,
@@ -190,6 +185,30 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   faSlidersH = faSlidersH;
   faListUl = faListUl;
   faRss = faRss;
+  faGear = faGear;
+  faPowerOff = faPowerOff;
+
+  // The download options sit behind a one-line summary under the link box,
+  // and the three lists are tabs.
+  isOptionsOpen = false;
+  activeTab: 'queue' | 'done' | 'subscriptions' = 'queue';
+  // Full-page states. 'connecting' shows only until the first list arrives.
+  pageState: 'connecting' | 'restarting' | 'closed' = 'connecting';
+  // Settings dialog (app/app_settings.py). Folders need the Windows helper.
+  settingsPage: SettingsPage | null = null;
+  folderDraft: Folders | null = null;
+  savingFolders = false;
+  browsingFolder: keyof Folders | null = null;
+  readonly folderFields: { kind: keyof Folders; label: string; placeholder: string; help: string }[] = [
+    { kind: 'downloads', label: 'Downloads', placeholder: 'C:\\Users\\you\\Downloads\\MediaHarvest',
+      help: 'Videos, and music too unless a music folder is set' },
+    { kind: 'music', label: 'Music', placeholder: 'Same as Downloads', help: 'Audio downloads go here when set' },
+    { kind: 'temp', label: 'Working files', placeholder: 'Same as Downloads',
+      help: 'Where downloads are put together before they move to their folder' },
+  ];
+  private static readonly RESTART_POLL_MS = 1500;
+  private static readonly RESTART_GIVE_UP_MS = 120_000;
+
   constructor() {
     // A pasted link to one video is looked up once typing stops, so the page
     // can show what it is and how many formats it has before downloading.
@@ -651,7 +670,7 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   }
 
   typeIcon(type: string): IconDefinition {
-    return TYPE_ICONS[type] ?? faDownload;
+    return typeIcon({ download_type: type });
   }
 
   urlChanged(value: string) {
@@ -928,6 +947,7 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
         }
         this.addUrl = '';
         this.videoPassword = '';
+        this.activeTab = 'queue';
       }
       this.resetAddState();
     });
@@ -1120,6 +1140,166 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
 
   toggleAdvanced() {
     this.isAdvancedOpen = !this.isAdvancedOpen;
+  }
+
+  toggleOptions() {
+    this.isOptionsOpen = !this.isOptionsOpen;
+  }
+
+  selectTab(tab: 'queue' | 'done' | 'subscriptions') {
+    this.activeTab = tab;
+  }
+
+  // What the next download will be, e.g. "Video · MP4 · 1080p · Compress: Medium".
+  optionsSummary(): string {
+    const text = (list: { id: string; text: string }[], id: string) => list.find(o => o.id === id)?.text;
+    const parts = [
+      text(this.downloadTypes, this.downloadType),
+      text(this.formatOptions, this.format),
+      this.qualities.length > 1 ? text(this.qualities, this.quality) : undefined,
+    ];
+    if (this.downloadType === 'video' && this.compress && this.compress !== 'off') {
+      const level = text(this.compressOptions, this.compress);
+      if (level) parts.push(`Compress: ${level}`);
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  // Whether the page was opened with the desktop shortcut, so closing it and
+  // choosing folders can reach Windows.
+  hostHelper(): boolean {
+    return this.downloads.configuration['HOST_HELPER'] === true;
+  }
+
+  openSettings(dialog: TemplateRef<unknown>) {
+    this.settingsPage = null;
+    this.folderDraft = null;
+    this.modal.open(dialog, { size: 'lg', scrollable: true });
+    this.loadSettings();
+  }
+
+  private loadSettings() {
+    this.downloads.getSettings().subscribe(page => {
+      if (!page) {
+        this.toasts.error('Could not load the settings. Try again in a moment.');
+        return;
+      }
+      this.settingsPage = page;
+      this.folderDraft = page.folders ? { ...page.folders } : null;
+      this.cdr.markForCheck();
+    });
+  }
+
+  saveSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+    this.downloads.saveSettings({ [key]: value } as Partial<AppSettings>).subscribe(result => {
+      if ('settings' in result) {
+        this.settingsPage = result;
+        this.folderDraft = this.folderDraft ?? (result.folders ? { ...result.folders } : null);
+        this.toasts.success('Saved');
+      } else {
+        this.toasts.error(result.msg || 'Could not save the setting.');
+        this.loadSettings();
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  clearDayOptions(): { days: number; text: string }[] {
+    const options = [
+      { days: 0, text: 'Never' },
+      { days: 1, text: 'After a day' },
+      { days: 7, text: 'After a week' },
+      { days: 30, text: 'After 30 days' },
+      { days: 90, text: 'After 90 days' },
+    ];
+    const current = this.settingsPage?.settings.clear_completed_days;
+    if (current != null && !options.some(o => o.days === current)) {
+      options.push({ days: current, text: `After ${current} days` });
+      options.sort((a, b) => a.days - b.days);
+    }
+    return options;
+  }
+
+  foldersChanged(): boolean {
+    const saved = this.settingsPage?.folders;
+    const draft = this.folderDraft;
+    if (!saved || !draft) return false;
+    return (['downloads', 'music', 'temp'] as const).some(k => (draft[k] ?? '').trim() !== (saved[k] ?? '').trim());
+  }
+
+  resetFolders() {
+    if (this.settingsPage?.folders) {
+      this.folderDraft = { ...this.settingsPage.folders };
+    }
+  }
+
+  // Opens the Windows folder picker; it may sit behind the browser window.
+  browseFolder(kind: keyof Folders) {
+    const draft = this.folderDraft;
+    if (!draft) return;
+    this.browsingFolder = kind;
+    this.downloads.browseFolder(kind, draft[kind] || draft.downloads).subscribe(result => {
+      this.browsingFolder = null;
+      if ('status' in result) {
+        this.toasts.error(result.msg || 'Could not open the folder picker.');
+      } else if (result.path && this.folderDraft) {
+        this.folderDraft = { ...this.folderDraft, [kind]: result.path };
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  saveFolders(modal: { close: () => void }) {
+    if (!this.folderDraft) return;
+    this.savingFolders = true;
+    this.downloads.saveFolders(this.folderDraft).subscribe(result => {
+      this.savingFolders = false;
+      if (result.status === 'error') {
+        this.toasts.error(result.msg || 'Could not change the folders.');
+      } else {
+        modal.close();
+        this.pageState = 'restarting';
+        this.waitForRestart();
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  // The old server answers until the helper stops it; reload once a new one
+  // answers after that.
+  private waitForRestart() {
+    const started = Date.now();
+    let wentDown = false;
+    const timer = setInterval(() => {
+      this.http.get('version').subscribe({
+        next: () => {
+          if (wentDown || Date.now() - started > App.RESTART_GIVE_UP_MS) {
+            clearInterval(timer);
+            window.location.reload();
+          }
+        },
+        error: () => { wentDown = true; },
+      });
+    }, App.RESTART_POLL_MS);
+    this.destroyRef.onDestroy(() => clearInterval(timer));
+  }
+
+  confirmClose(dialog: TemplateRef<unknown>) {
+    this.modal.open(dialog).result.then(
+      confirmed => { if (confirmed === true) this.closeApp(); },
+      () => undefined,
+    );
+  }
+
+  private closeApp() {
+    this.downloads.closeApp().subscribe(result => {
+      if (result.status === 'error') {
+        this.toasts.error(result.msg || 'Could not close MediaHarvest.');
+      } else {
+        this.pageState = 'closed';
+      }
+      this.cdr.markForCheck();
+    });
   }
 
   onCookieFileSelect(event: Event) {

@@ -1,209 +1,197 @@
-<div class="metube-section-header">
-  <button type="button" class="metube-section-toggle" (click)="toggleCollapsed()" [attr.aria-expanded]="!collapsed">
-    <span>Completed</span>
-    <fa-icon [icon]="collapsed ? faChevronRight : faChevronDown" class="metube-section-chevron" />
-  </button>
-</div>
-@if (!collapsed) {
-  <div class="px-2 py-3 border-bottom">
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" (click)="toggleSortOrder()" ngbTooltip="{{ sortAscending ? 'Oldest first' : 'Newest first' }}"><fa-icon [icon]="sortAscending ? faSortAmountUp : faSortAmountDown" />&nbsp; {{ sortAscending ? 'Oldest first' : 'Newest first' }}</button>
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" [disabled]="selectedCount === 0" (click)="delSelectedDownloads()"><fa-icon [icon]="faTrashAlt" />&nbsp; Clear selected</button>
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" [disabled]="!hasCompletedDone" (click)="clearCompletedDownloads()"><fa-icon [icon]="faCheckCircle" />&nbsp; Clear completed</button>
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" [disabled]="!hasFailedDone" (click)="clearFailedDownloads()"><fa-icon [icon]="faTimesCircle" />&nbsp; Clear failed</button>
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" [disabled]="!hasFailedDone" (click)="retryFailedDownloads()"><fa-icon [icon]="faRedoAlt" />&nbsp; Retry failed</button>
-    <button type="button" class="btn btn-link text-decoration-none px-0 me-4" [disabled]="selectedCount === 0" (click)="downloadSelectedFiles()"><fa-icon [icon]="faDownload" />&nbsp; Download Selected</button>
-  </div>
-  <div class="overflow-auto">
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col" style="width: 1rem;">
-            <app-select-all-checkbox #doneMasterCheckboxRef [id]="'done'" [list]="downloads.done" [orderedIds]="cachedSortedDoneIds" (changed)="selectionChanged($event)" />
-          </th>
-          <th scope="col">Video</th>
-          <th scope="col">Type</th>
-          <th scope="col">Quality</th>
-          <th scope="col">Codec / Format</th>
-          <th scope="col">File Size</th>
-          <th scope="col">Downloaded</th>
-          <th scope="col" style="width: 8rem;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (entry of cachedSortedDone; track entry[0]) {
-          <tr [class.disabled]='entry[1].deleting'>
-            <td>
-              <app-item-checkbox [id]="entry[0]" [master]="doneMasterCheckboxRef" [checkable]="entry[1]" />
-            </td>
-            <td>
-              <div style="display: inline-block; width: 1.5rem;">
-                @if (entry[1].status === 'finished') {
-                  <fa-icon [icon]="faCheckCircle" class="text-success" />
-                }
-                @if (entry[1].status === 'error') {
-                  <button type="button" class="btn btn-link p-0"
-                    (click)="toggleErrorDetail(entry[0])"
-                    [attr.aria-label]="'Toggle error details for ' + entry[1].title"
-                    [attr.aria-expanded]="isErrorExpanded(entry[0])">
-                    <fa-icon [icon]="faTimesCircle" class="text-danger" />
-                  </button>
-                }
+<div class="mh-list">
+  <table class="mh-rows">
+    <thead [hidden]="!cachedSortedDone.length">
+      <tr>
+        <th scope="col" class="mh-check">
+          <app-select-all-checkbox #doneMasterCheckboxRef [id]="'done'" [list]="downloads.done" [orderedIds]="cachedSortedDoneIds" (changed)="selectionChanged($event)" />
+        </th>
+        <th scope="col" colspan="3">
+          <div class="mh-bulkbar">
+            @if (selectedCount > 0) {
+              <span class="mh-bulk-count">{{ selectedCount }} selected</span>
+              <button type="button" class="btn btn-sm mh-bulk-btn" (click)="downloadSelectedFiles()"><fa-icon [icon]="faDownload" /> Save selected</button>
+              <button type="button" class="btn btn-sm mh-bulk-btn" (click)="delSelectedDownloads()"><fa-icon [icon]="faTrashAlt" /> Remove selected</button>
+            } @else {
+              <button type="button" class="btn btn-sm mh-bulk-btn" (click)="toggleSortOrder()">
+                <fa-icon [icon]="sortAscending ? faSortAmountUp : faSortAmountDown" /> {{ sortAscending ? 'Oldest first' : 'Newest first' }}
+              </button>
+            }
+            <div ngbDropdown container="body" placement="bottom-end" class="ms-auto">
+              <button type="button" class="mh-icon-btn" ngbDropdownToggle aria-label="Clear or retry the list" ngbTooltip="Clear or retry"><fa-icon [icon]="faEllipsis" /></button>
+              <div ngbDropdownMenu>
+                <button type="button" ngbDropdownItem [disabled]="!hasCompletedDone" (click)="clearCompletedDownloads()"><fa-icon [icon]="faCheckCircle" class="me-2" />Clear completed</button>
+                <button type="button" ngbDropdownItem [disabled]="!hasFailedDone" (click)="clearFailedDownloads()"><fa-icon [icon]="faTimesCircle" class="me-2" />Clear failed</button>
+                <button type="button" ngbDropdownItem [disabled]="!hasFailedDone" (click)="retryFailedDownloads()"><fa-icon [icon]="faRedoAlt" class="me-2" />Retry failed</button>
               </div>
-              <span ngbTooltip="{{buildResultItemTooltip(entry[1])}}">@if (!!entry[1].filename) {
-                <a href="{{buildDownloadLink(entry[1])}}" target="_blank">{{ entry[1].title }}</a>
+            </div>
+          </div>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (entry of cachedSortedDone; track entry[0]) {
+        <tr [class.disabled]='entry[1].deleting'>
+          <td class="mh-check">
+            <app-item-checkbox [id]="entry[0]" [master]="doneMasterCheckboxRef" [checkable]="entry[1]" />
+          </td>
+          <td class="mh-thumb-cell">
+            <div class="mh-thumb" [class.mh-failed]="entry[1].status === 'error'">
+              @if (entry[1].thumbnail) {
+                <img [src]="entry[1].thumbnail" alt="" loading="lazy" referrerpolicy="no-referrer">
               } @else {
-                @if (entry[1].status === 'error') {
-                  <button type="button" class="btn btn-link p-0 text-start align-baseline" (click)="toggleErrorDetail(entry[0])">
-                    {{entry[1].title}}
-                    @if (!isErrorExpanded(entry[0])) {
-                      <small class="text-danger ms-2">
-                        <fa-icon [icon]="faChevronRight" size="xs" class="me-1" />Click for details
-                      </small>
-                    }
-                  </button>
-                } @else {
-                  <span>{{entry[1].title}}</span>
-                }
-              }</span>
-              @if (entry[1].status === 'error' && isErrorExpanded(entry[0])) {
-                <div class="alert alert-danger py-2 px-3 mt-2 mb-0 small" style="border-left: 4px solid var(--bs-danger);">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                      @if (entry[1].msg) {
-                        <div class="mb-1"><strong>Message:</strong> {{entry[1].msg}}</div>
-                      }
-                      @if (entry[1].error) {
-                        <div class="mb-1"><strong>Error:</strong> {{entry[1].error}}</div>
-                      }
-                      <div class="text-muted" style="word-break: break-all;"><strong>URL:</strong> {{entry[1].url}}</div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-2 flex-shrink-0"
-                      (click)="copyErrorMessage(entry[0], entry[1]); $event.stopPropagation()"
-                      ngbTooltip="Copy error details to clipboard">
-                      @if (lastCopiedErrorId === entry[0]) {
-                        <span class="text-success">Copied!</span>
-                      } @else {
-                        <fa-icon [icon]="faCopy" />
-                      }
-                    </button>
-                  </div>
-                </div>
+                <fa-icon [icon]="typeIcon(entry[1])" />
               }
-              @if (entry[1].compression; as c) {
-                <div class="compress-status small mt-1">
-                  @switch (c.state) {
-                    @case ('running') {
-                      <div class="text-info">Compressing ({{ presetName(c.preset, c.height) }}) {{ (c.percent ?? 0) | number:'1.0-0' }}%@if (c.eta) {, {{ c.eta | eta }} left}</div>
-                      <ngb-progressbar type="info" height="0.35rem" [value]="c.percent ?? 0" class="compress-progress" />
-                    }
-                    @case ('done') {
-                      <span class="text-success">Compressed ({{ presetName(c.preset, c.height) }}): {{ (c.original_size ?? 0) | fileSize }} → {{ (c.size ?? 0) | fileSize }}, {{ savedPercent(entry[1]) | number:'1.0-0' }}% smaller</span>
-                    }
-                    @case ('kept') {
-                      <span class="text-body-secondary">Kept as it was: {{ presetName(c.preset, c.height) }} would not make it smaller.</span>
-                    }
-                    @case ('error') {
-                      <span class="text-danger">Not compressed: {{ c.msg }}</span>
-                    }
-                  }
-                </div>
+              @if (entry[1].compression?.state === 'running') {
+                <span class="mh-thumb-progress mh-compressing" [style.width.%]="entry[1].compression?.percent ?? 0"></span>
               }
-            </td>
-            <td class="text-nowrap">
-              {{ downloadTypeLabel(entry[1]) }}
-            </td>
-            <td class="text-nowrap">
-              {{ formatQualityLabel(entry[1]) }}
-            </td>
-            <td class="text-nowrap">
-              {{ formatCodecLabel(entry[1]) }}
-            </td>
-            <td>
+            </div>
+          </td>
+          <td class="mh-body">
+            <div class="mh-title" ngbTooltip="{{buildResultItemTooltip(entry[1])}}" [openDelay]="600">
+              @if (!!entry[1].filename) {
+                <a href="{{buildDownloadLink(entry[1])}}" target="_blank">{{ entry[1].title }}</a>
+              } @else if (entry[1].status === 'error') {
+                <button type="button" class="mh-title-btn" (click)="toggleErrorDetail(entry[0])"
+                  [attr.aria-label]="'Toggle error details for ' + entry[1].title"
+                  [attr.aria-expanded]="isErrorExpanded(entry[0])">{{ entry[1].title }}</button>
+              } @else {
+                <span>{{ entry[1].title }}</span>
+              }
+            </div>
+            <div class="mh-meta">
+              @if (entry[1].status === 'error') {
+                <button type="button" class="mh-badge mh-badge-error" (click)="toggleErrorDetail(entry[0])">
+                  Failed<fa-icon [icon]="isErrorExpanded(entry[0]) ? faChevronDown : faChevronRight" size="xs" class="ms-1" />
+                </button>
+              }
+              <span>{{ downloadTypeLabel(entry[1]) }}</span>
+              @if (formatQualityLabel(entry[1]) !== '-' && formatQualityLabel(entry[1])) {
+                <span>{{ formatQualityLabel(entry[1]) }}</span>
+              }
+              @if (formatCodecLabel(entry[1]) && formatCodecLabel(entry[1]).toLowerCase() !== 'auto') {
+                <span>{{ formatCodecLabel(entry[1]) }}</span>
+              }
               @if (entry[1].size) {
                 <span>{{ entry[1].size | fileSize }}</span>
               }
-            </td>
-            <td class="text-nowrap">
               @if (entry[1].timestamp) {
-                <span>{{ entry[1].timestamp / 1000000 | date:'yyyy-MM-dd HH:mm' }}</span>
+                <span>{{ entry[1].timestamp / 1000000 | date:'d MMM, HH:mm' }}</span>
               }
-            </td>
-            <td>
-              <div class="d-flex justify-content-end">
-                @if (entry[1].status === 'error') {
-                  <button type="button" class="btn btn-link" [attr.aria-label]="'Retry download for ' + entry[1].title" (click)="retryDownload(entry[0], entry[1])"><fa-icon [icon]="faRedoAlt" /></button>
-                }
-                @if (canCompress(entry[1]) && compressPresets().length) {
-                  <div ngbDropdown #compressMenu="ngbDropdown" autoClose="outside" container="body" placement="bottom-end" class="d-inline-block">
-                    <button type="button" class="btn btn-link compress-toggle" ngbDropdownToggle ngbTooltip="Make smaller"
-                      [attr.aria-label]="'Compress ' + entry[1].title"><fa-icon [icon]="faCompress" /></button>
-                    <div ngbDropdownMenu class="compress-menu">
-                      <h6 class="dropdown-header">Make this video smaller</h6>
-                      <div class="px-3 pb-2">
-                        <label class="form-label small mb-1" for="compress-height-{{ entry[1].id }}">Resolution</label>
-                        <select class="form-select form-select-sm" id="compress-height-{{ entry[1].id }}"
-                          [ngModel]="menuHeight" (ngModelChange)="menuHeight = $event">
-                          @for (h of compressHeights(); track h.id) {
-                            <option [ngValue]="h.id">{{ h.text }}</option>
-                          }
-                        </select>
-                      </div>
-                      @for (p of compressPresets(); track p.id) {
-                        <button type="button" ngbDropdownItem (click)="compressMenu.close(); compressDownload(entry[0], entry[1], p.id, menuHeight)">
-                          {{ p.text }}
-                          @if (p.detail) {
-                            <small class="d-block text-body-secondary">{{ p.detail }}</small>
-                          }
-                        </button>
-                      }
-                    </div>
-                  </div>
-                }
-                @if (entry[1].filename) {
-                  <a href="{{buildDownloadLink(entry[1])}}" download class="btn btn-link" [attr.aria-label]="'Download result file for ' + entry[1].title"><fa-icon [icon]="faDownload" /></a>
-                }
-                @if (entry[1].filename && canShareDownloads()) {
-                  <button type="button" class="btn btn-link" [attr.aria-label]="'Share result file for ' + entry[1].title" (click)="shareDownload(entry[1])"><fa-icon [icon]="faShareNodes" /></button>
-                }
-                <a href="{{entry[1].url}}" target="_blank" class="btn btn-link" [attr.aria-label]="'Open source URL for ' + entry[1].title"><fa-icon [icon]="faExternalLinkAlt" /></a>
-                <button type="button" class="btn btn-link" [attr.aria-label]="'Delete completed item ' + entry[1].title" (click)="delDownload(entry[0])"><fa-icon [icon]="faTrashAlt" /></button>
-              </div>
-            </td>
-          </tr>
-        @if (entry[1].chapter_files && entry[1].chapter_files.length > 0) {
-          @for (chapterFile of entry[1].chapter_files; track chapterFile.filename) {
-            <tr [class.disabled]='entry[1].deleting'>
-              <td></td>
-              <td>
-                <div style="padding-left: 2rem;">
-              <fa-icon [icon]="faCheckCircle" class="text-success me-2" />
-              <a href="{{buildChapterDownloadLink(entry[1], chapterFile.filename)}}" target="_blank" [attr.aria-label]="'Open chapter file ' + getChapterFileName(chapterFile.filename)">{{
-                getChapterFileName(chapterFile.filename) }}</a>
             </div>
-          </td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td>
-            @if (chapterFile.size) {
-            <span>{{ chapterFile.size | fileSize }}</span>
+            @if (entry[1].status === 'error' && isErrorExpanded(entry[0])) {
+              <div class="mh-error-detail">
+                <div class="flex-grow-1 min-w-0">
+                  @if (entry[1].msg) {
+                    <div class="mb-1">{{entry[1].msg}}</div>
+                  }
+                  @if (entry[1].error) {
+                    <div class="mb-1">{{entry[1].error}}</div>
+                  }
+                  <div class="mh-mono text-break">{{entry[1].url}}</div>
+                </div>
+                <button type="button" class="mh-icon-btn flex-shrink-0"
+                  (click)="copyErrorMessage(entry[0], entry[1]); $event.stopPropagation()"
+                  [attr.aria-label]="'Copy error details for ' + entry[1].title"
+                  ngbTooltip="Copy the error">
+                  @if (lastCopiedErrorId === entry[0]) {
+                    <fa-icon [icon]="faCheck" class="text-success" />
+                  } @else {
+                    <fa-icon [icon]="faCopy" />
+                  }
+                </button>
+              </div>
+            }
+            @if (entry[1].compression; as c) {
+              <div class="mh-note compress-status">
+                @switch (c.state) {
+                  @case ('running') {
+                    <span class="mh-accent-text">Compressing ({{ presetName(c.preset, c.height) }}) {{ (c.percent ?? 0) | number:'1.0-0' }}%@if (c.eta) {, {{ c.eta | eta }} left}</span>
+                  }
+                  @case ('done') {
+                    <span>Compressed ({{ presetName(c.preset, c.height) }}): {{ (c.original_size ?? 0) | fileSize }} → {{ (c.size ?? 0) | fileSize }}, {{ savedPercent(entry[1]) | number:'1.0-0' }}% smaller@if (c.original_kept) {, original kept}</span>
+                  }
+                  @case ('kept') {
+                    <span>Kept as it was: {{ presetName(c.preset, c.height) }} would not make it smaller.</span>
+                  }
+                  @case ('error') {
+                    <span class="text-danger">Not compressed: {{ c.msg }}</span>
+                  }
+                }
+              </div>
             }
           </td>
-          <td></td>
-          <td>
-            <div class="d-flex">
-              <a href="{{buildChapterDownloadLink(entry[1], chapterFile.filename)}}" download [attr.aria-label]="'Download chapter file ' + getChapterFileName(chapterFile.filename)"
-                class="btn btn-link"><fa-icon [icon]="faDownload" /></a>
+          <td class="mh-actions">
+            <div class="mh-row-actions">
+              @if (entry[1].status === 'error') {
+                <button type="button" class="mh-icon-btn" ngbTooltip="Try again" [attr.aria-label]="'Retry download for ' + entry[1].title" (click)="retryDownload(entry[0], entry[1])"><fa-icon [icon]="faRedoAlt" /></button>
+              }
+              @if (entry[1].filename) {
+                <a href="{{buildDownloadLink(entry[1])}}" download class="mh-icon-btn" ngbTooltip="Save to this device" [attr.aria-label]="'Download result file for ' + entry[1].title"><fa-icon [icon]="faDownload" /></a>
+              }
+              @if (canCompress(entry[1]) && compressPresets().length) {
+                <div ngbDropdown #compressMenu="ngbDropdown" autoClose="outside" container="body" placement="bottom-end" class="d-inline-block">
+                  <button type="button" class="mh-icon-btn compress-toggle" ngbDropdownToggle ngbTooltip="Make smaller"
+                    [attr.aria-label]="'Compress ' + entry[1].title"><fa-icon [icon]="faCompress" /></button>
+                  <div ngbDropdownMenu class="compress-menu">
+                    <h6 class="dropdown-header">Make this video smaller</h6>
+                    <div class="px-3 pb-2">
+                      <label class="form-label small mb-1" for="compress-height-{{ entry[1].id }}">Resolution</label>
+                      <select class="form-select form-select-sm" id="compress-height-{{ entry[1].id }}"
+                        [ngModel]="menuHeight" (ngModelChange)="menuHeight = $event">
+                        @for (h of compressHeights(); track h.id) {
+                          <option [ngValue]="h.id">{{ h.text }}</option>
+                        }
+                      </select>
+                    </div>
+                    @for (p of compressPresets(); track p.id) {
+                      <button type="button" ngbDropdownItem (click)="compressMenu.close(); compressDownload(entry[0], entry[1], p.id, menuHeight)">
+                        {{ p.text }}
+                        @if (p.detail) {
+                          <small class="d-block text-body-secondary">{{ p.detail }}</small>
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+              <div ngbDropdown container="body" placement="bottom-end" class="d-inline-block">
+                <button type="button" class="mh-icon-btn" ngbDropdownToggle [attr.aria-label]="'More for ' + entry[1].title"><fa-icon [icon]="faEllipsis" /></button>
+                <div ngbDropdownMenu>
+                  @if (entry[1].filename && canShareDownloads()) {
+                    <button type="button" ngbDropdownItem [attr.aria-label]="'Share result file for ' + entry[1].title" (click)="shareDownload(entry[1])"><fa-icon [icon]="faShareNodes" class="me-2" />Share</button>
+                  }
+                  <a ngbDropdownItem href="{{entry[1].url}}" target="_blank" rel="noopener" [attr.aria-label]="'Open source URL for ' + entry[1].title"><fa-icon [icon]="faExternalLinkAlt" class="me-2" />Open the page it came from</a>
+                  <button type="button" ngbDropdownItem class="text-danger" [attr.aria-label]="'Delete completed item ' + entry[1].title" (click)="delDownload(entry[0])"><fa-icon [icon]="faTrashAlt" class="me-2" />Remove from list</button>
+                </div>
+              </div>
             </div>
           </td>
         </tr>
+        @if (entry[1].chapter_files && entry[1].chapter_files.length > 0) {
+          @for (chapterFile of entry[1].chapter_files; track chapterFile.filename) {
+            <tr class="mh-chapter" [class.disabled]='entry[1].deleting'>
+              <td class="mh-check"></td>
+              <td class="mh-thumb-cell"></td>
+              <td class="mh-body">
+                <a href="{{buildChapterDownloadLink(entry[1], chapterFile.filename)}}" target="_blank" [attr.aria-label]="'Open chapter file ' + getChapterFileName(chapterFile.filename)">{{
+                  getChapterFileName(chapterFile.filename) }}</a>
+                @if (chapterFile.size) {
+                  <span class="mh-meta d-inline-flex ms-2">{{ chapterFile.size | fileSize }}</span>
+                }
+              </td>
+              <td class="mh-actions">
+                <div class="mh-row-actions">
+                  <a href="{{buildChapterDownloadLink(entry[1], chapterFile.filename)}}" download [attr.aria-label]="'Download chapter file ' + getChapterFileName(chapterFile.filename)"
+                    class="mh-icon-btn"><fa-icon [icon]="faDownload" /></a>
+                </div>
+              </td>
+            </tr>
+          }
         }
       }
-    }
-      </tbody>
-    </table>
-    @if (!cachedSortedDone.length) {
-      <p class="empty-hint">Finished downloads appear here, ready to save to this device.</p>
-    }
-  </div>
-}
+    </tbody>
+  </table>
+  @if (!cachedSortedDone.length) {
+    <p class="empty-hint">Finished downloads appear here, ready to save to this device.</p>
+  }
+</div>

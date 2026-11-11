@@ -4,7 +4,6 @@ import { CookieService } from 'ngx-cookie-service';
 import { SubscriptionsSectionComponent } from './subscriptions-section.component';
 import { DownloadsService } from '../services/downloads.service';
 import { SubscriptionsService } from '../services/subscriptions.service';
-import { SettingsStore } from '../services/settings-store.service';
 import { ToastService } from '../services/toast.service';
 import { SubscriptionRow } from '../interfaces/subscription';
 
@@ -141,13 +140,4 @@ describe('SubscriptionsSectionComponent', () => {
     expect(section.checkingSubscriptionIds.size).toBe(0);
   });
 
-  it('remembers whether the section is collapsed', () => {
-    const section = create().componentInstance;
-    expect(section.collapsed).toBe(false);
-
-    section.toggleCollapsed();
-
-    expect(TestBed.inject(SettingsStore).get('metube_subscriptions_collapsed')).toBe('true');
-    expect(create().componentInstance.collapsed).toBe(true);
-  });
 });

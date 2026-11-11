@@ -12,6 +12,29 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 // hit with hundreds at a time when a list is long.
 export const ADD_REQUEST_CONCURRENCY = 4;
 
+// Settings saved on the server (app/app_settings.py).
+export interface AppSettings {
+  delete_files: 'never' | 'ask' | 'always';
+  keep_original: boolean;
+  // null: set in .env in seconds that are not whole days.
+  clear_completed_days: number | null;
+  keep_partial_files: boolean;
+}
+
+// Folders on this computer, as Windows paths. Empty music or temp means the
+// download folder.
+export interface Folders {
+  downloads: string;
+  music: string;
+  temp: string;
+}
+
+export interface SettingsPage {
+  settings: AppSettings;
+  helper: boolean;
+  folders: Folders | null;
+}
+
 export interface AddDownloadPayload {
   url: string;
   downloadType: string;
@@ -353,6 +376,38 @@ export class DownloadsService {
     return this.http.post<Status>('cancel-add', {}).pipe(
       catchError(this.handleHTTPError)
     );
+  }
+
+  // The Settings page (app/app_settings.py). folders is null when MediaHarvest
+  // was not opened with its Windows helper, which alone can change them.
+  getSettings(): Observable<SettingsPage | null> {
+    return this.http.get<SettingsPage>('settings').pipe(catchError(() => of(null)));
+  }
+
+  saveSettings(changes: Partial<AppSettings>): Observable<SettingsPage | Status> {
+    return this.http.post<SettingsPage>('settings', changes).pipe(catchError(err => this.serverError(err)));
+  }
+
+  // Restarts MediaHarvest with these folders; the page reloads once it is back.
+  saveFolders(folders: Folders): Observable<Status> {
+    return this.http.post<Status>('settings/folders', folders).pipe(catchError(err => this.serverError(err)));
+  }
+
+  // Opens a folder picker on this computer; path is null when it was cancelled.
+  browseFolder(kind: keyof Folders, current: string): Observable<{ path: string | null } | Status> {
+    return this.http.post<{ path: string | null }>('settings/browse', { kind, current }).pipe(
+      catchError(err => this.serverError(err)));
+  }
+
+  closeApp(): Observable<Status> {
+    return this.http.post<Status>('app/close', {}).pipe(catchError(err => this.serverError(err)));
+  }
+
+  // aiohttp answers a refused request with "400: <reason>" as text.
+  private serverError(error: HttpErrorResponse): Observable<Status> {
+    const text = typeof error.error === 'string' ? error.error : '';
+    const msg = text.replace(/^\d{3}:\s*/, '') || error.message || 'Request failed';
+    return of({ status: 'error', msg } as Status);
   }
 
   uploadCookies(file: File) {

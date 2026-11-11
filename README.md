@@ -9,7 +9,7 @@
   in the quality and size you choose. It runs on your own computer, in Docker.
 </p>
 
-![A pasted YouTube link: the preview shows the video, its 13 video and 12 audio formats, and a Choose format button](docs/screenshot-preview.jpg)
+![A pasted YouTube link: the preview shows the video and its 13 video and 12 audio formats; below are Video, Audio, Captions and Thumbnail, the chosen options on one line, and the Downloading, Completed and Subscriptions tabs](docs/screenshot-preview.jpg)
 
 ## What it does
 
@@ -61,11 +61,15 @@ per hour of video on a 12-core computer. If a video wouldn't get at least 5%
 smaller, the original is kept. Details:
 [Making videos smaller](docs/FEATURES.md#making-videos-smaller-compress).
 
+**Your folders, your rules.** The gear at the top opens **Settings**: where
+videos, music and the files of unfinished downloads go, whether removing a
+download from the list deletes its file, whether compressing keeps the original
+too, when the Completed list clears itself, and whether parts of cancelled
+downloads are kept so they can continue later.
+
 **And more:** whole playlists and channels, subscriptions that fetch new uploads,
 clips by start and end time, sponsor-segment removal, splitting by chapters,
 captions or thumbnails on their own.
-
-![Completed downloads with their compression results, and the Compress menu: Resolution, then Light, Medium, Strong or Any device](docs/screenshot-completed.jpg)
 
 ![The format picker: every stream of the video with its quality, codec, bitrate and size](docs/screenshot-picker.jpg)
 
@@ -96,7 +100,13 @@ curl -fsSL https://raw.githubusercontent.com/MohanVishe/mediaharvest/main/instal
 
 The installer makes one folder (`MediaHarvest` in your user folder) with the
 settings, starts MediaHarvest and saves files to `Downloads/MediaHarvest`. Run it
-again any time to update. You can read both scripts before running them:
+again any time to update.
+
+On Windows it also puts a **MediaHarvest** shortcut on the desktop. The shortcut
+starts Docker Desktop and MediaHarvest and opens the page. The power button at
+the top of the page closes MediaHarvest, and Docker Desktop too when nothing
+else is running in it. Downloads that were still running continue the next
+time you open it. You can read both scripts before running them:
 [install.ps1](install.ps1), [install.sh](install.sh).
 
 **Docker Compose**, from a clone of this repository:
@@ -128,7 +138,7 @@ In the install folder (or the repository):
 | | |
 |---|---|
 | Update | `docker compose pull && docker compose up -d` |
-| Stop | `docker compose down` |
+| Stop | The power button on the page (Windows, opened with the shortcut), or `docker compose down` |
 | Remove | `docker compose down --rmi all`, then delete the folder |
 
 A new image is published after every yt-dlp release, so updating also keeps
@@ -137,13 +147,16 @@ sites working.
 ## Use it
 
 1. Paste a link. A card shows the video and how many formats it has.
-2. Pick **Video**, **Audio**, **Captions** or **Thumbnail**, and the format below.
-   Then press **Download**, or open **All formats** to choose the exact stream.
-3. Watch it in **Downloading**. If the connection drops or the link expires, it
-   waits and carries on by itself.
-4. Finished files appear under **Completed**. Click one to save it to the device
-   you're using; they're also in the download folder. The compress button on a
-   video's row makes it smaller.
+2. Pick **Video**, **Audio**, **Captions** or **Thumbnail**. The line beside
+   them says what you'll get, for example *Video · MP4 · 1080p*; click
+   **Options** to change it. Then press **Download**, or open **All formats** to
+   choose the exact stream.
+3. Watch it in the **Downloading** tab: the line under the picture fills up as
+   it downloads. If the connection drops or the link expires, it waits and
+   carries on by itself.
+4. Finished files appear in the **Completed** tab. Click one to save it to the
+   device you're using; they're also in the download folder. Point at a row for
+   its buttons: save, make smaller, and **⋯** for the rest.
 
 Every option is explained in [docs/FEATURES.md](docs/FEATURES.md).
 

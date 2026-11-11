@@ -33,12 +33,37 @@ MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the gu
 | `DOWNLOAD_DIR` | `/downloads` | Where downloads are saved. |
 | `AUDIO_DOWNLOAD_DIR` | same as `DOWNLOAD_DIR` | Where audio-only downloads are saved, to keep them apart from video. |
 | `TEMP_DIR` | `/downloads` | Where files are written while downloading. An SSD or `tmpfs` is faster, but on a RAM disk interrupted downloads can't resume. |
-| `STATE_DIR` | `/downloads/.metube` | Where MediaHarvest keeps its queue, history, subscriptions and uploaded cookies. |
+| `STATE_DIR` | `/downloads/.metube` | Where MediaHarvest keeps its queue, history, subscriptions, uploaded cookies and the Settings page's choices (`settings.json`). |
 | `CUSTOM_DIRS` | `true` | Show a **Download Folder** field under Advanced Options, to save into a subfolder of the download directory. |
 | `CREATE_CUSTOM_DIRS` | `true` | Let that field create folders that don't exist yet. |
 | `CUSTOM_DIRS_EXCLUDE_REGEX` | `(^\|/)[.@].*$` | Folders left out of the field's suggestions; the default hides names starting with `.` or `@`. Empty hides none. |
 | `DEFAULT_FOLDER` | | Folder the field starts with, relative to the download directory. Requires `CUSTOM_DIRS`. |
 | `DOWNLOAD_DIRS_INDEXABLE` | `false` | Serve browsable listings of the download directories. |
+
+### Folders with Docker Compose
+
+`docker-compose.yml` mounts four folders from this computer. Set them in `.env`;
+each one left out falls back to the download folder.
+
+| `.env` variable | Mounted at | For |
+|---|---|---|
+| `MEDIAHARVEST_DOWNLOADS` | `/downloads` | Finished files |
+| `MEDIAHARVEST_MUSIC` | `/music` | Audio downloads. Also set `MEDIAHARVEST_MUSIC_DIR=/music` |
+| `MEDIAHARVEST_TEMP` | `/temp` | Downloads in progress. Also set `MEDIAHARVEST_TEMP_DIR=/temp` |
+| `MEDIAHARVEST_STATE` | `/state` | Lists and settings (default: `.metube` in the download folder) |
+
+On Windows, the desktop shortcut's helper sets all of these from the Settings
+page and restarts MediaHarvest with them; there is nothing to edit by hand.
+
+### The Settings page
+
+**Files** on the Settings page change four things while MediaHarvest runs, and
+are saved in `settings.json` in `STATE_DIR`. A saved choice wins over the
+environment variable: `DELETE_FILE_ON_TRASHCAN` (removing an item),
+`CLEAR_COMPLETED_AFTER` (whole days only; a value in seconds that is not whole
+days shows as *As set in .env* until changed), keeping the original after
+compressing, and keeping partial files of cancelled or failed downloads (both
+off by default).
 
 ### Very large downloads
 

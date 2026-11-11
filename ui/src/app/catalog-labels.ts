@@ -3,6 +3,19 @@
 // download's own type. A record whose type or option the catalog no longer
 // lists still reads sensibly.
 import { Download, DownloadTypeOption, FormatCatalog } from './interfaces';
+import { IconDefinition, faClosedCaptioning, faDownload, faFilm, faImage, faMusic } from '@fortawesome/free-solid-svg-icons';
+
+const TYPE_ICONS: Record<string, IconDefinition> = {
+  video: faFilm,
+  audio: faMusic,
+  captions: faClosedCaptioning,
+  thumbnail: faImage,
+};
+
+// The picture a row shows when the site gave no thumbnail.
+export function typeIcon(download: Pick<Download, 'download_type'>): IconDefinition {
+  return TYPE_ICONS[download.download_type] ?? faDownload;
+}
 
 export function catalogTypes(catalog: FormatCatalog | null | undefined): DownloadTypeOption[] {
   return catalog?.download_type.options ?? [];

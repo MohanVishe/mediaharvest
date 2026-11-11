@@ -57,9 +57,15 @@ services:
       - "127.0.0.1:`${MEDIAHARVEST_PORT:-8081}:8081"
     volumes:
       - "`${MEDIAHARVEST_DOWNLOADS:-./downloads}:/downloads"
+      - "`${MEDIAHARVEST_STATE:-`${MEDIAHARVEST_DOWNLOADS:-./downloads}/.metube}:/state"
+      - "`${MEDIAHARVEST_MUSIC:-`${MEDIAHARVEST_DOWNLOADS:-./downloads}}:/music"
+      - "`${MEDIAHARVEST_TEMP:-`${MEDIAHARVEST_DOWNLOADS:-./downloads}}:/temp"
     environment:
       PUID: `${MEDIAHARVEST_UID:-1000}
       PGID: `${MEDIAHARVEST_GID:-1000}
+      STATE_DIR: /state
+      AUDIO_DOWNLOAD_DIR: `${MEDIAHARVEST_MUSIC_DIR:-/downloads}
+      TEMP_DIR: `${MEDIAHARVEST_TEMP_DIR:-/downloads}
       ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
       DEFAULT_THEME: "auto"
 "@
@@ -106,17 +112,46 @@ services:
     }
     Write-Host ''
 
+    # The Windows helper: desktop shortcuts to open and close MediaHarvest,
+    # and what the Settings page needs to change folders and close Docker.
+    $helper = Join-Path $Dir 'windows\MediaHarvest.ps1'
+    New-Item -ItemType Directory -Force -Path (Split-Path $helper) | Out-Null
+    $source = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'windows' } else { $null }
+    foreach ($name in 'MediaHarvest.ps1', 'mediaharvest.ico') {
+        $target = Join-Path (Split-Path $helper) $name
+        if ($source -and (Test-Path (Join-Path $source $name))) {
+            Copy-Item -Force (Join-Path $source $name) $target
+        } else {
+            try { Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/MohanVishe/mediaharvest/main/windows/$name" -OutFile $target }
+            catch { Write-Host "Could not download $name; the desktop shortcuts are skipped." -ForegroundColor Yellow }
+        }
+    }
     $url = "http://localhost:$Port"
+    $shortcuts = $false
+    if (Test-Path $helper) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper -Install -ComposeDir $Dir -Downloads $Downloads -Port $Port
+        $shortcuts = $LASTEXITCODE -eq 0
+    }
+
     Write-Host ''
     Write-Host "MediaHarvest is running: $url" -ForegroundColor Green
     Write-Host "Downloads are saved in:  $Downloads"
     Write-Host ''
+    if ($shortcuts) {
+        Write-Host 'Open it with "MediaHarvest" on the desktop; close it with the power button at the top of the page.'
+        Write-Host 'Folders and file settings: the gear button next to it.'
+        Write-Host ''
+    }
     Write-Host "In $Dir :"
     Write-Host '  Update:     docker compose pull; docker compose up -d'
     Write-Host '  Stop:       docker compose down'
     Write-Host '  Settings:   edit .env, then docker compose up -d'
-    Write-Host "  Uninstall:  docker compose down --rmi all, then delete $Dir"
-    Start-Process $url
+    Write-Host "  Uninstall:  docker compose down --rmi all, then delete $Dir and %LOCALAPPDATA%\MediaHarvest"
+    if ($shortcuts) {
+        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', (Join-Path $env:LOCALAPPDATA 'MediaHarvest\MediaHarvest.ps1'))
+    } else {
+        Start-Process $url
+    }
 }
 
 Install-MediaHarvest

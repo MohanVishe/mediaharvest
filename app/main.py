@@ -19,6 +19,7 @@ import time
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from watchfiles import awatch
 
+import app_settings
 import bg_tasks
 import format_catalog
 import format_probe
@@ -381,6 +382,12 @@ config = Config()
 # This re-applies the log level after Config loads, in case LOGLEVEL was
 # overridden by config file settings or differs from the environment variable.
 logging.getLogger().setLevel(parseLogLevel(str(config.LOGLEVEL)) or logging.INFO)
+
+# The Settings page's choices, and the Windows helper that can restart or
+# close MediaHarvest (app_settings.py).
+os.makedirs(config.STATE_DIR, exist_ok=True)
+settings_store = app_settings.AppSettings(config, config.STATE_DIR)
+host_helper = app_settings.HostHelper(config.STATE_DIR)
 
 class ObjectSerializer(json.JSONEncoder):
     def default(self, obj):
@@ -850,6 +857,41 @@ async def _start_nightly_update_schedule(app):
 
 app.on_startup.append(_start_nightly_update_schedule)
 
+
+async def _clear_old_completed():
+    """Remove Completed rows past CLEAR_COMPLETED_AFTER once an hour. The
+    per-row timers do it as downloads finish, but not across a restart."""
+    while True:
+        await dqueue.clear_expired()
+        await asyncio.sleep(3600)
+
+
+async def _start_clear_old_completed(app):
+    bg_tasks.create_task(_clear_old_completed(), name="clear_old_completed")
+
+
+app.on_startup.append(_start_clear_old_completed)
+
+
+async def _watch_host_helper():
+    """Keep reading the Windows helper's heartbeat (app_settings.HostHelper),
+    and tell open pages when it comes or goes: a page that connected first
+    would otherwise not offer Close or the folders."""
+    was_connected = host_helper.connected()
+    while True:
+        await asyncio.sleep(2)
+        connected = host_helper.connected()
+        if connected != was_connected:
+            was_connected = connected
+            await sio.emit('configuration', serializer.encode(_frontend_configuration()))
+
+
+async def _start_watch_host_helper(app):
+    bg_tasks.create_task(_watch_host_helper(), name="watch_host_helper")
+
+
+app.on_startup.append(_start_watch_host_helper)
+
 def get_options_update_time(success=True, msg=''):
     result = {
         'success': success,
@@ -1242,6 +1284,97 @@ async def compress(request):
     return web.Response(text=serializer.encode(status), content_type='application/json')
 
 
+def _frontend_configuration() -> dict:
+    """What the browser is told about the server: the safe config keys, and
+    whether the Windows helper is running to restart or close MediaHarvest."""
+    return {**config.frontend_safe(), 'HOST_HELPER': host_helper.connected()}
+
+
+def _settings_payload() -> dict:
+    """The Settings page. Folders are the ones on this computer, which only
+    the Windows helper knows; without it they are set where MediaHarvest is
+    installed (.env), and the page says so."""
+    status = host_helper.status()
+    return {
+        'settings': settings_store.values(),
+        'helper': status is not None,
+        'folders': status['folders'] if status else None,
+    }
+
+
+def _json(data, status=200):
+    return web.Response(text=serializer.encode(data), status=status, content_type='application/json')
+
+
+def _require_helper():
+    if not host_helper.connected():
+        raise web.HTTPConflict(
+            reason='This works when MediaHarvest is opened with its desktop shortcut.')
+
+
+@routes.get(config.URL_PREFIX + 'settings')
+async def get_settings(request):
+    return _json(_settings_payload())
+
+
+@routes.post(config.URL_PREFIX + 'settings')
+async def update_settings(request):
+    post = await _read_json_request(request)
+    try:
+        settings_store.update(post)
+    except app_settings.SettingsError as exc:
+        raise web.HTTPBadRequest(reason=str(exc)) from exc
+    await dqueue.clear_expired()
+    await sio.emit('configuration', serializer.encode(_frontend_configuration()))
+    return _json(_settings_payload())
+
+
+@routes.post(config.URL_PREFIX + 'settings/folders')
+async def change_folders(request):
+    """Restart MediaHarvest with other folders. Only the Windows helper can:
+    the container sees just the folders it was started with."""
+    post = await _read_json_request(request)
+    try:
+        folders = app_settings.check_folders(post)
+    except app_settings.SettingsError as exc:
+        raise web.HTTPBadRequest(reason=str(exc)) from exc
+    _require_helper()
+    # The helper makes the folders first and says if it cannot; then it
+    # restarts MediaHarvest, which ends this server.
+    response = await host_helper.ask('restart', timeout=30, folders=folders)
+    if response is None:
+        raise web.HTTPGatewayTimeout(reason='The MediaHarvest helper did not answer.')
+    if not response.get('ok'):
+        raise web.HTTPBadRequest(reason=str(response.get('error') or 'Those folders cannot be used.'))
+    return _json({'status': 'restarting'})
+
+
+@routes.post(config.URL_PREFIX + 'settings/browse')
+async def browse_folder(request):
+    """Open a Windows folder picker on this computer and return the choice."""
+    post = await _read_json_request(request)
+    kind = _str_field(post, 'kind', '')
+    if kind not in app_settings.FOLDER_KINDS:
+        raise web.HTTPBadRequest(reason="'kind' must be downloads, music or temp")
+    current = _str_field(post, 'current', '')
+    _require_helper()
+    response = await host_helper.ask('browse', timeout=300, kind=kind, current=current)
+    if response is None:
+        raise web.HTTPGatewayTimeout(reason='The folder picker did not answer.')
+    path = response.get('path')
+    return _json({'path': path if isinstance(path, str) and path else None})
+
+
+@routes.post(config.URL_PREFIX + 'app/close')
+async def close_app(request):
+    """Close MediaHarvest and Docker Desktop, through the Windows helper.
+    Downloads still running continue the next time it opens."""
+    await _read_json_request(request)
+    _require_helper()
+    host_helper.send('close')
+    return _json({'status': 'closing'})
+
+
 @routes.post(config.URL_PREFIX + 'subscribe')
 async def subscribe(request):
     post = await _read_json_request(request)
@@ -1525,7 +1658,7 @@ async def connect(sid, environ):
     await sio.emit('all', serializer.encode(dqueue.get()), to=sid)
     await sio.emit('subscriptions_all', serializer.encode([s.to_public_dict() for s in submgr.list_all()]), to=sid)
     await sio.emit('formats', serializer.encode(format_catalog.public_catalog()), to=sid)
-    await sio.emit('configuration', serializer.encode(config.frontend_safe()), to=sid)
+    await sio.emit('configuration', serializer.encode(_frontend_configuration()), to=sid)
     # The slow directory / ytdl-options emits must NOT be awaited here: the
     # connect ACK is sent only when this handler returns, so awaiting them
     # would delay the handshake past the engine.io ping window. Dispatch them

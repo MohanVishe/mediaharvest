@@ -128,6 +128,13 @@ def gpu_available() -> bool:
     return _gpu_checked
 
 
+def smaller_copy_path(path: str) -> str:
+    """Where the compressed copy goes when the original is kept. The
+    extension is a guide: compress_file gives it the preset's own."""
+    stem, ext = os.path.splitext(path)
+    return f'{stem} (smaller){ext}'
+
+
 def output_extension(path: str, preset: str) -> str:
     """The extension the *preset* version of *path* is written with."""
     ext = os.path.splitext(path)[1].lower()
