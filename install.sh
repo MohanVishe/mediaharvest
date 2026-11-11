@@ -59,7 +59,7 @@ services:
       PUID: \${MEDIAHARVEST_UID:-1000}
       PGID: \${MEDIAHARVEST_GID:-1000}
       ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
-      DEFAULT_THEME: "auto"
+      DEFAULT_THEME: "mono"
 EOF
 
 if [ "${MEDIAHARVEST_PULL:-1}" != "0" ]; then

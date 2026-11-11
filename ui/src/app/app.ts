@@ -530,12 +530,12 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   }
 
   getPreferredTheme(cookieService: CookieService) {
-    let theme = 'auto';
+    let theme = 'mono';
     if (cookieService.check('metube_theme')) {
       theme = cookieService.get('metube_theme');
     }
 
-    return this.themes.find(x => x.id === theme) ?? this.themes.find(x => x.id === 'auto');
+    return this.themes.find(x => x.id === theme) ?? this.themes.find(x => x.id === 'mono');
   }
 
   themeChanged(theme: Theme) {

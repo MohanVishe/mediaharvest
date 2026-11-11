@@ -300,7 +300,7 @@ class ConfigTests(unittest.TestCase):
         with patch.dict(os.environ, _base_env(LOGLEVEL=" ", DEFAULT_THEME=""), clear=False):
             c = Config()
         self.assertEqual(c.LOGLEVEL, "INFO")
-        self.assertEqual(c.DEFAULT_THEME, "auto")
+        self.assertEqual(c.DEFAULT_THEME, "mono")
 
     def test_loglevel_none_accepted(self):
         with patch.dict(os.environ, _base_env(LOGLEVEL="NONE"), clear=False):

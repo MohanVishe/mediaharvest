@@ -108,7 +108,7 @@ class Config:
         'CERTFILE': '',
         'KEYFILE': '',
         'BASE_DIR': '',
-        'DEFAULT_THEME': 'auto',
+        'DEFAULT_THEME': 'mono',
         'MAX_CONCURRENT_DOWNLOADS': '3',
         'LOGLEVEL': 'INFO',
         'ENABLE_ACCESSLOG': 'false',

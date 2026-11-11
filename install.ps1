@@ -67,7 +67,7 @@ services:
       AUDIO_DOWNLOAD_DIR: `${MEDIAHARVEST_MUSIC_DIR:-/downloads}
       TEMP_DIR: `${MEDIAHARVEST_TEMP_DIR:-/downloads}
       ALLOW_YTDL_OPTIONS_OVERRIDES: "false"
-      DEFAULT_THEME: "auto"
+      DEFAULT_THEME: "mono"
 "@
     [System.IO.File]::WriteAllText((Join-Path $Dir 'compose.yaml'), ($compose -replace "`r`n", "`n") + "`n", $utf8)
 

@@ -35,8 +35,8 @@ with how many items it holds. Adding a download switches to Downloading.
 
 The buttons at the top right are **Settings** (the gear), the theme (light,
 dark, following your system, **Terminal**: dark and monospace, like a
-command-line tool, or **Mono**: light or dark as your system is, in one
-monospace font with pixel icons and progress drawn in blocks) and **Close** (the power button, which works
+command-line tool, or **Mono**, the default: light or dark as your system
+is, in one monospace font with pixel icons and progress drawn in blocks) and **Close** (the power button, which works
 when MediaHarvest was opened with its Windows shortcut).
 
 ## Paste a link

@@ -12,7 +12,7 @@ MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the gu
 | `CHOWN_DIRS` | `true` | Make `PUID:PGID` the owner of the download, state and temp directories at startup. With `false`, MediaHarvest's user must already have access. |
 | `LOGLEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` or `NONE`. |
 | `ENABLE_ACCESSLOG` | `false` | Log every HTTP request. |
-| `DEFAULT_THEME` | `auto` | UI theme: `light`, `dark`, `auto` to follow the system, `terminal` (dark, styled like a command-line tool), or `mono` (follows the system, one monospace font, pixel icons). |
+| `DEFAULT_THEME` | `mono` | UI theme for a browser that has not picked one: `light`, `dark`, `auto` to follow the system, `terminal` (dark, styled like a command-line tool), or `mono` (follows the system, one monospace font, pixel icons). |
 
 ## Downloads
 
