@@ -155,7 +155,7 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
   private static readonly THEME_COOKIE_EXPIRY_DAYS = 3650;
   private colorSchemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   private onColorSchemeChanged = () => {
-    if (this.activeTheme && this.activeTheme.id === 'auto') {
+    if (this.activeTheme && (this.activeTheme.id === 'auto' || this.activeTheme.id === 'mono')) {
       this.setTheme(this.activeTheme);
     }
   };
@@ -551,9 +551,13 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
       root.setAttribute('data-mh-skin', 'terminal');
       return;
     }
-    root.removeAttribute('data-mh-skin');
-    if (theme.id === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      root.setAttribute('data-bs-theme', 'dark');
+    if (theme.id === 'mono') {
+      root.setAttribute('data-mh-skin', 'mono');
+    } else {
+      root.removeAttribute('data-mh-skin');
+    }
+    if (theme.id === 'auto' || theme.id === 'mono') {
+      root.setAttribute('data-bs-theme', this.colorSchemeMediaQuery.matches ? 'dark' : 'light');
     } else {
       root.setAttribute('data-bs-theme', theme.id);
     }

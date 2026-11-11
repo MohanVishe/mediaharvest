@@ -83,6 +83,8 @@ windows/MediaHarvest.ps1 — Windows helper: desktop shortcut, start/close, fold
 app/tests/           — pytest tests (asyncio_mode=auto)
 ui/src/app/          — Angular standalone components (no NgModules)
 ui/src/_mh-theme.sass — The page's look: colour tokens for light and dark, top bar, tabs, settings
+ui/src/_mh-terminal.sass, _mh-mono.sass — The Terminal and Mono themes, each set by data-mh-skin on <html>
+ui/src/mono/         — Mono's font (JetBrains Mono, OFL) and pixel icons (pixelarticons, MIT), with their licences
 ```
 
 ## Key conventions

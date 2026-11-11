@@ -387,6 +387,22 @@ describe('App', () => {
     expect(root.hasAttribute('data-mh-skin')).toBe(false);
   });
 
+  it('gives the mono look the light or dark colours of the system', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const root = document.documentElement;
+    const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+    app.setTheme(app.themes.find((t) => t.id === 'mono')!);
+    expect(root.getAttribute('data-mh-skin')).toBe('mono');
+    expect(root.getAttribute('data-bs-theme')).toBe(system);
+
+    app.setTheme(app.themes.find((t) => t.id === 'auto')!);
+    expect(root.getAttribute('data-bs-theme')).toBe(system);
+    expect(root.hasAttribute('data-mh-skin')).toBe(false);
+  });
+
   it('sums up the download options on one line', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

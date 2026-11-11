@@ -11,3 +11,7 @@ git history. They include a format picker and link preview, re-encoding to the
 chosen audio bitrate, lyrics lookup, video subtitles, a disk-space check,
 a reworked interface and branding, checksum-pinned image builds, installers,
 and a new CI and release pipeline.
+
+The Mono theme bundles JetBrains Mono (copyright the JetBrains Mono Project
+Authors, SIL Open Font License 1.1) and icons from pixelarticons (copyright
+Gerrit Halfmann, MIT License). Their licences are in ui/src/mono/.

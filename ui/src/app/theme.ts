@@ -1,4 +1,4 @@
-import { faCircleHalfStroke, faMoon, faSun, faTerminal } from "@fortawesome/free-solid-svg-icons";
+import { faCircleHalfStroke, faMoon, faSquare, faSun, faTerminal } from "@fortawesome/free-solid-svg-icons";
 import { Theme } from "./interfaces/theme";
 
 
@@ -23,5 +23,12 @@ export const Themes: Theme[] = [
     id: 'terminal',
     displayName: 'Terminal',
     icon: faTerminal,
+  },
+  // Light or dark as the system is, in one monospace font with pixel icons
+  // and block progress (_mh-mono.sass).
+  {
+    id: 'mono',
+    displayName: 'Mono',
+    icon: faSquare,
   },
 ];

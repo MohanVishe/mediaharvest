@@ -1,0 +1,215 @@
+// The Mono theme: the usual page in one monospace font (JetBrains Mono, OFL),
+// with pixel icons (pixelarticons, MIT) and progress drawn in blocks. Light or
+// dark as the system is. Set on <html> by App.setTheme as data-mh-skin="mono";
+// the fonts, icons and their licences are in src/mono/.
+//
+// The selectors start with :root so they outweigh the list styles, which
+// Angular scopes to each component.
+
+$m: ':root[data-mh-skin="mono"]'
+
+@font-face
+    font-family: "JetBrains Mono"
+    font-weight: 400
+    font-display: swap
+    src: url("mono/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2")
+
+@font-face
+    font-family: "JetBrains Mono"
+    font-weight: 500
+    font-display: swap
+    src: url("mono/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2")
+
+#{$m}
+    --mh-bg: #f6f7f6
+    --mh-surface: #ffffff
+    --mh-surface-2: #eff1f0
+    --mh-line: rgba(16, 24, 22, .12)
+    --mh-text: #141917
+    --mh-text-2: #4a5450
+    --mh-text-3: #6f7b76
+    --mh-progress: #0f766e
+    --mh-radius: 4px
+    --mh-radius-lg: 6px
+    --mh-font: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace
+    --mh-mono: var(--mh-font)
+    --bs-body-bg: var(--mh-bg)
+    --bs-body-color: var(--mh-text)
+    --bs-emphasis-color: var(--mh-text)
+    --bs-secondary-color: var(--mh-text-2)
+    --bs-tertiary-color: var(--mh-text-3)
+    --bs-secondary-bg: var(--mh-surface-2)
+    --bs-tertiary-bg: var(--mh-surface-2)
+    --bs-border-color: var(--mh-line)
+    --bs-border-radius: 3px
+    --bs-border-radius-sm: 2px
+    --bs-border-radius-lg: var(--mh-radius)
+
+#{$m}[data-bs-theme="dark"]
+    --mh-bg: #0e1110
+    --mh-surface: #141817
+    --mh-surface-2: #1b201e
+    --mh-line: rgba(214, 236, 228, .1)
+    --mh-text: #dfe7e3
+    --mh-text-2: #9aa7a1
+    --mh-text-3: #6d7a74
+    --mh-progress: #2dd4bf
+    --bs-emphasis-color: #eef4f1
+
+#{$m}
+    body
+        font-size: 13px
+        letter-spacing: 0
+
+    .mh-icon-btn, .btn, .form-check-input:not([role="switch"])
+        border-radius: 3px
+
+    // A monospace face runs wide: the link box at 15px, not Bootstrap's 20px.
+    .form-control-lg, .btn-lg
+        font-size: 15px
+
+    .mh-brand span
+        text-transform: lowercase
+
+    .mh-tab
+        font-weight: 400
+
+        &:focus-visible
+            border-radius: 0
+
+        .mh-count
+            border-radius: 2px
+
+    .mh-thumb
+        border-radius: 2px
+
+    .mh-live-dot
+        border-radius: 0
+
+    // Progress in blocks along the thumbnail's bottom edge.
+    .mh-thumb .mh-thumb-progress
+        z-index: 1
+        height: 6px
+        mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px)
+        transition: width .4s steps(4, end)
+
+    // The blocks still to fill, dimmed behind the bar.
+    .mh-thumb:has(.mh-thumb-progress)::after
+        content: ""
+        position: absolute
+        left: 0
+        right: 0
+        bottom: 0
+        height: 6px
+        background: rgba(0, 0, 0, .55)
+        mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px)
+
+    .progress-bar
+        mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px)
+
+    // Starting or finishing: one block hops along the edge.
+    .mh-thumb.mh-indeterminate .mh-thumb-progress
+        width: 12.5% !important
+        transform: none
+
+    .modal-content, .dropdown-menu, .popover, .toast
+        border-radius: var(--mh-radius)
+
+    // A cursor after the start-up and status lines.
+    .mh-overlay .mh-overlay-title::after
+        content: ""
+        display: inline-block
+        width: .55em
+        height: 1em
+        margin-left: 4px
+        vertical-align: -.12em
+        background: var(--mh-accent-text)
+
+    .spinner-border
+        border-radius: 0
+
+    // On a phone the wider letters need tighter tabs and type buttons.
+    @media (max-width: 575.98px)
+        .mh-tab
+            font-size: 12px
+            gap: 4px
+
+            .mh-count
+                padding: 1px 4px
+
+        .type-switch-row .btn
+            font-size: 12px
+            padding-left: 6px
+            padding-right: 6px
+
+// Pixel icons in place of FontAwesome's, matched on the name it renders.
+// The icon's own drawing is hidden; its box is painted through the pixel one.
+$mh-pixel-icons: ("check": "check", "circle-check": "check", "chevron-down": "chevron-down", "chevron-right": "chevron-right", "circle-half-stroke": "monitor", "clock": "clock", "closed-captioning": "badge-captions", "compress": "collapse", "copy": "copy", "download": "download", "ellipsis": "more-horizontal", "up-right-from-square": "external-link", "file-export": "upload", "file-import": "download", "film": "video", "gear": "settings-cog", "github": "github", "image": "image", "circle-info": "circle-info", "list-ul": "bulletlist", "moon": "moon", "music": "music", "pause": "pause", "play": "play", "power-off": "power", "rotate-right": "reload", "rss": "rss", "share-nodes": "share", "sliders": "sliders", "arrow-down-wide-short": "sort-vertical", "arrow-up-wide-short": "sort-vertical", "sun": "sun", "gauge-high": "speed-fast", "terminal": "terminal", "circle-xmark": "close", "xmark": "close", "trash-can": "trash", "upload": "upload", "square": "colors-swatch")
+
+%mh-pixel-icon
+    width: 1.25em
+    height: 1.25em
+    vertical-align: -.25em
+    background: currentColor
+    mask-position: center
+    mask-size: contain
+    mask-repeat: no-repeat
+
+    > *
+        opacity: 0
+
+@each $fa, $px in $mh-pixel-icons
+    #{$m} .svg-inline--fa[data-icon="#{$fa}"]
+        @extend %mh-pixel-icon
+        mask-image: url("mono/icons/#{$px}.svg")
+
+// Icon buttons and placeholders get the icons at their drawn size, 24px,
+// where every pixel lands on a screen pixel.
+#{$m} .mh-icon-btn .svg-inline--fa, #{$m} .mh-thumb .svg-inline--fa
+    width: 24px
+    height: 24px
+    vertical-align: middle
+
+@media (prefers-reduced-motion: no-preference)
+    #{$m} .mh-thumb.mh-indeterminate .mh-thumb-progress
+        animation: mh-px-hop 1.2s steps(8, end) infinite
+
+    // A small block circling before the state of a row that is working.
+    #{$m} .mh-rows tr:has(.mh-thumb-progress) .mh-state::before
+        content: ""
+        display: inline-block
+        width: 4px
+        height: 4px
+        margin-right: 10px
+        vertical-align: .3em
+        background: var(--mh-progress)
+        animation: mh-px-orbit .8s steps(1, end) infinite
+
+    #{$m} .mh-overlay .mh-overlay-title::after
+        animation: mh-px-blink 1s steps(1, end) infinite
+
+    #{$m} .mh-pulse
+        animation-timing-function: steps(3, end)
+
+    #{$m} .spinner-border
+        animation-timing-function: steps(8, end)
+
+@keyframes mh-px-hop
+    from
+        transform: translateX(0)
+    to
+        transform: translateX(800%)
+
+@keyframes mh-px-orbit
+    0%
+        transform: translate(0, 0)
+    25%
+        transform: translate(4px, 0)
+    50%
+        transform: translate(4px, 4px)
+    75%
+        transform: translate(0, 4px)
+
+@keyframes mh-px-blink
+    50%
+        opacity: 0

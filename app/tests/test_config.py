@@ -311,6 +311,8 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(Config().DEFAULT_THEME, "dark")
         with patch.dict(os.environ, _base_env(DEFAULT_THEME="Terminal"), clear=False):
             self.assertEqual(Config().DEFAULT_THEME, "terminal")
+        with patch.dict(os.environ, _base_env(DEFAULT_THEME="mono"), clear=False):
+            self.assertEqual(Config().DEFAULT_THEME, "mono")
         with patch.dict(os.environ, _base_env(DEFAULT_THEME="purple"), clear=False):
             with self.assertRaises(SystemExit):
                 Config()

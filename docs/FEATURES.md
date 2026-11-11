@@ -34,8 +34,9 @@ Below are three tabs: **Downloading**, **Completed** and **Subscriptions**, each
 with how many items it holds. Adding a download switches to Downloading.
 
 The buttons at the top right are **Settings** (the gear), the theme (light,
-dark, following your system, or **Terminal**: dark and monospace, like a
-command-line tool) and **Close** (the power button, which works
+dark, following your system, **Terminal**: dark and monospace, like a
+command-line tool, or **Mono**: light or dark as your system is, in one
+monospace font with pixel icons and progress drawn in blocks) and **Close** (the power button, which works
 when MediaHarvest was opened with its Windows shortcut).
 
 ## Paste a link
@@ -246,7 +247,7 @@ running it says so first. They continue the next time you open MediaHarvest.
 
 - **As an app:** in Chrome or Edge, choose *Install MediaHarvest* in the
   address bar. It then opens in its own window.
-- **Light, dark or Terminal:** the button at the top right switches the
+- **Light, dark, Terminal or Mono:** the button at the top right switches the
   theme, or follows your system.
 - **From a phone:** MediaHarvest answers only on the computer it runs on,
   because it has no login. To use it from other devices, put a reverse proxy
