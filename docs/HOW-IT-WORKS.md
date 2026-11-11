@@ -231,6 +231,6 @@ detection, progress, the keep-or-replace rule), `CompressPP` in
 
 ## Checking the code works
 
-There are about 1,230 automatic tests: 1,056 for the server and 173 for the
+There are about 1,230 automatic tests: 1,057 for the server and 174 for the
 page. They run in Docker, and on GitHub for every change. See
 [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -545,10 +545,17 @@ export class App implements AfterViewInit, OnInit, OnDestroy {
 
   setTheme(theme: Theme) {
     this.activeTheme = theme;
+    const root = document.documentElement;
+    if (theme.id === 'terminal') {
+      root.setAttribute('data-bs-theme', 'dark');
+      root.setAttribute('data-mh-skin', 'terminal');
+      return;
+    }
+    root.removeAttribute('data-mh-skin');
     if (theme.id === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.documentElement.setAttribute('data-bs-theme', 'dark');
+      root.setAttribute('data-bs-theme', 'dark');
     } else {
-      document.documentElement.setAttribute('data-bs-theme', theme.id);
+      root.setAttribute('data-bs-theme', theme.id);
     }
   }
 

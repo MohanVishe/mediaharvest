@@ -19,14 +19,14 @@
       }
     </div>
     <div class="mh-topbar-actions">
-      <button type="button" class="mh-icon-btn" (click)="openSettings(settingsDialog)" aria-label="Settings" ngbTooltip="Settings">
+      <button type="button" class="mh-icon-btn" (click)="openSettings(settingsDialog)" aria-label="Settings" data-term="settings" ngbTooltip="Settings">
         <fa-icon [icon]="faGear" />
       </button>
       <div class="dropdown" ngbDropdown placement="bottom-end">
         <button class="mh-icon-btn"
           id="theme-select"
           type="button"
-          aria-label="Theme" ngbTooltip="Theme"
+          aria-label="Theme" ngbTooltip="Theme" data-term="theme"
           ngbDropdownToggle>
           @if(activeTheme){
           <fa-icon [icon]="activeTheme.icon" />
@@ -52,7 +52,7 @@
           }
         </ul>
       </div>
-      <button type="button" class="mh-icon-btn mh-danger" (click)="confirmClose(closeDialog)" aria-label="Close MediaHarvest" ngbTooltip="Close MediaHarvest">
+      <button type="button" class="mh-icon-btn mh-danger" data-term="quit" (click)="confirmClose(closeDialog)" aria-label="Close MediaHarvest" ngbTooltip="Close MediaHarvest">
         <fa-icon [icon]="faPowerOff" />
       </button>
     </div>

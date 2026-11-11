@@ -1,0 +1,179 @@
+// The Terminal theme: the same page, styled like a command-line tool. Dark,
+// one monospace font, bracketed text buttons in the top bar, a prompt in the
+// link box, and a typed start-up line. Set on <html> by App.setTheme as
+// data-mh-skin="terminal" next to data-bs-theme="dark".
+
+[data-mh-skin="terminal"]
+    --mh-bg: #0b0e0d
+    --mh-surface: #0f1312
+    --mh-surface-2: #161c1a
+    --mh-line: rgba(94, 234, 212, .13)
+    --mh-text: #d5e1db
+    --mh-text-2: #8ea39a
+    --mh-text-3: #5f736a
+    --mh-progress: #2dd4bf
+    --mh-accent: #2dd4bf
+    --mh-accent-hover: #5eead4
+    --mh-accent-active: #14b8a6
+    --mh-accent-text: #2dd4bf
+    --mh-accent-rgb: 45, 212, 191
+    --mh-radius: 4px
+    --mh-radius-lg: 6px
+    --mh-font: "Cascadia Code", "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace
+    --mh-mono: var(--mh-font)
+    --bs-body-bg: var(--mh-bg)
+    --bs-body-color: var(--mh-text)
+    --bs-emphasis-color: #eef6f2
+    --bs-secondary-color: var(--mh-text-2)
+    --bs-tertiary-color: var(--mh-text-3)
+    --bs-secondary-bg: var(--mh-surface-2)
+    --bs-tertiary-bg: var(--mh-surface-2)
+    --bs-border-color: var(--mh-line)
+    --bs-border-radius: 4px
+    --bs-border-radius-sm: 3px
+    --bs-border-radius-lg: var(--mh-radius)
+    --bs-primary: var(--mh-accent)
+    --bs-primary-rgb: var(--mh-accent-rgb)
+    --bs-link-color: var(--mh-accent-text)
+    --bs-link-color-rgb: var(--mh-accent-rgb)
+    --bs-link-hover-color: var(--mh-accent-hover)
+    --bs-danger: #f87171
+    --bs-info: #f5b74a
+
+    body
+        font-size: 14px
+        letter-spacing: 0
+
+    ::selection
+        background: rgba(var(--mh-accent-rgb), .3)
+
+    .btn-primary
+        --bs-btn-bg: var(--mh-accent)
+        --bs-btn-border-color: var(--mh-accent)
+        --bs-btn-color: #03201b
+        --bs-btn-hover-bg: var(--mh-accent-hover)
+        --bs-btn-hover-border-color: var(--mh-accent-hover)
+        --bs-btn-hover-color: #03201b
+        --bs-btn-active-bg: var(--mh-accent-active)
+        --bs-btn-active-color: #03201b
+        font-weight: 600
+
+    .form-control, .form-select
+        caret-color: var(--mh-accent)
+
+        &:focus
+            border-color: var(--mh-accent)
+            box-shadow: 0 0 0 1px var(--mh-accent)
+
+    // Brand: a prompt and the name in lower case.
+    .mh-brand span
+        text-transform: lowercase
+
+        &::before
+            content: "❯ "
+            color: var(--mh-accent)
+
+    // Top bar buttons as bracketed words instead of icons.
+    @media (min-width: 576px)
+        .mh-topbar-actions .mh-icon-btn[data-term]
+            width: auto
+            padding: 0 6px
+            font-size: 13px
+            color: var(--mh-text-2)
+
+            svg
+                display: none
+
+            &::before
+                content: "[" attr(data-term) "]"
+
+            &:hover, &:focus-visible
+                color: var(--mh-accent)
+                background: transparent
+
+            &.mh-danger:hover
+                color: var(--bs-danger)
+
+    // The link box reads as a prompt.
+    .add-url-box .input-group
+        position: relative
+
+        > .form-control:first-child
+            padding-left: 2.1rem
+
+        &::before
+            content: "$"
+            position: absolute
+            left: 14px
+            top: 50%
+            transform: translateY(-50%)
+            z-index: 6
+            color: var(--mh-accent)
+            font-size: 1.1rem
+            pointer-events: none
+
+    // Tabs, labels and counts in lower case, with a marker on the open tab.
+    .mh-tab
+        text-transform: lowercase
+        font-weight: 400
+
+        &.active::before
+            content: ">"
+            color: var(--mh-accent)
+
+        .mh-count
+            border-radius: 3px
+            background: transparent
+            border: 1px solid var(--mh-line)
+
+    .mh-thumb
+        border: 1px solid var(--mh-line)
+        border-radius: 3px
+
+    .mh-thumb-progress
+        box-shadow: 0 0 8px var(--mh-progress)
+
+    .mh-title
+        font-weight: 500
+
+    .mh-badge
+        border-radius: 3px
+
+    .modal-content, .dropdown-menu, .toast
+        box-shadow: 0 0 0 1px var(--mh-line), 0 12px 32px rgba(0, 0, 0, .5)
+
+    // Start-up and status screens: a typed command and a blinking cursor.
+    .mh-overlay
+        .mh-overlay-title
+            display: inline-block
+            overflow: hidden
+            white-space: nowrap
+            max-width: 44ch
+            font-size: 1.05rem
+
+            &::before
+                content: "$ "
+                color: var(--mh-accent)
+
+            &::after
+                content: "▋"
+                color: var(--mh-accent)
+                margin-left: 2px
+
+        .mh-overlay-text
+            font-size: 13px
+
+@media (prefers-reduced-motion: no-preference)
+    [data-mh-skin="terminal"] .mh-overlay .mh-overlay-title
+        animation: mh-type 1.1s steps(32, end) both
+
+        &::after
+            animation: mh-blink 1s steps(1) infinite
+
+@keyframes mh-type
+    from
+        max-width: 0
+
+@keyframes mh-blink
+    50%
+        opacity: 0

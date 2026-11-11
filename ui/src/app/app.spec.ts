@@ -372,6 +372,21 @@ describe('App', () => {
     expect(app.pageState).toBe('closed');
   });
 
+  it('dresses the page as a terminal, and undoes it for another theme', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const root = document.documentElement;
+
+    app.setTheme(app.themes.find((t) => t.id === 'terminal')!);
+    expect(root.getAttribute('data-bs-theme')).toBe('dark');
+    expect(root.getAttribute('data-mh-skin')).toBe('terminal');
+
+    app.setTheme(app.themes.find((t) => t.id === 'light')!);
+    expect(root.getAttribute('data-bs-theme')).toBe('light');
+    expect(root.hasAttribute('data-mh-skin')).toBe(false);
+  });
+
   it('sums up the download options on one line', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

@@ -221,9 +221,9 @@ class Config:
 
         # The theme cookie is matched against the UI's theme ids as-is.
         self.DEFAULT_THEME = self.DEFAULT_THEME.strip().lower()
-        if self.DEFAULT_THEME not in ('light', 'dark', 'auto'):
+        if self.DEFAULT_THEME not in ('light', 'dark', 'auto', 'terminal'):
             log.error(
-                'Environment variable "DEFAULT_THEME" must be one of light, dark or auto, got "%s"',
+                'Environment variable "DEFAULT_THEME" must be one of light, dark, auto or terminal, got "%s"',
                 self.DEFAULT_THEME)
             sys.exit(1)
 

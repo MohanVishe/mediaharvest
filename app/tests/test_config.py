@@ -309,6 +309,8 @@ class ConfigTests(unittest.TestCase):
     def test_default_theme_normalized_and_validated(self):
         with patch.dict(os.environ, _base_env(DEFAULT_THEME=" Dark "), clear=False):
             self.assertEqual(Config().DEFAULT_THEME, "dark")
+        with patch.dict(os.environ, _base_env(DEFAULT_THEME="Terminal"), clear=False):
+            self.assertEqual(Config().DEFAULT_THEME, "terminal")
         with patch.dict(os.environ, _base_env(DEFAULT_THEME="purple"), clear=False):
             with self.assertRaises(SystemExit):
                 Config()
