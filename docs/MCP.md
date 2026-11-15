@@ -127,6 +127,9 @@ in its **Completed** tab too. `list_downloads` gives each finished file a
   served from the same aiohttp server and port as the web page.
 - The tools call the same code as the web page. Code: `app/mcp_server.py`.
   Tests: `app/tests/test_mcp_server.py`.
+- Listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.MohanVishe/mediaharvest)
+  as `io.github.MohanVishe/mediaharvest`, from `server.json`. Every `v*` tag
+  publishes the new version there.
 - Try it with the MCP Inspector:
 
   ```bash
