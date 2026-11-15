@@ -1,8 +1,8 @@
 # Configuration
 
-MediaHarvest is configured with environment variables: `-e NAME=value` with `docker run`, or the `environment:` section of `docker-compose.yml`. Defaults are the Docker image's; outside Docker, the directories default to the working directory.
+MediaHarvest is configured with environment variables: `-e NAME=value` with `docker run`, or the `environment:` section of `docker-compose.yml`. Defaults are the Docker image's. Outside Docker, the directories default to the working directory.
 
-MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the guides in [its wiki](https://github.com/alexta69/metube/wiki) apply here as well; they are linked below where they help.
+MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the guides in [its wiki](https://github.com/alexta69/metube/wiki) apply here as well. They are linked below where they help.
 ## Runtime and permissions
 
 | Variable | Default | Description |
@@ -18,7 +18,7 @@ MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the gu
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `MAX_CONCURRENT_DOWNLOADS` | `3` | Downloads that run at once; the rest wait their turn. |
+| `MAX_CONCURRENT_DOWNLOADS` | `3` | Downloads that run at once. The rest wait their turn. |
 | `DEFAULT_OPTION_PLAYLIST_ITEM_LIMIT` | `0` | Default for the **Items Limit** field: how many entries of a playlist or channel to download (`0` = all). |
 | `CLEAR_COMPLETED_AFTER` | `0` | Seconds before finished and failed downloads leave the Completed list (`0` = never). |
 | `DELETE_FILE_ON_TRASHCAN` | `false` | Also delete the file from disk when its entry is removed from Completed. `ask` prompts each time. |
@@ -36,14 +36,14 @@ MediaHarvest is built on [MeTube](https://github.com/alexta69/metube), so the gu
 | `STATE_DIR` | `/downloads/.metube` | Where MediaHarvest keeps its queue, history, subscriptions, uploaded cookies and the Settings page's choices (`settings.json`). |
 | `CUSTOM_DIRS` | `true` | Show a **Download Folder** field under Advanced Options, to save into a subfolder of the download directory. |
 | `CREATE_CUSTOM_DIRS` | `true` | Let that field create folders that don't exist yet. |
-| `CUSTOM_DIRS_EXCLUDE_REGEX` | `(^\|/)[.@].*$` | Folders left out of the field's suggestions; the default hides names starting with `.` or `@`. Empty hides none. |
+| `CUSTOM_DIRS_EXCLUDE_REGEX` | `(^\|/)[.@].*$` | Folders left out of the field's suggestions. The default hides names starting with `.` or `@`. Empty hides none. |
 | `DEFAULT_FOLDER` | | Folder the field starts with, relative to the download directory. Requires `CUSTOM_DIRS`. |
 | `DOWNLOAD_DIRS_INDEXABLE` | `false` | Serve browsable listings of the download directories. |
 
 ### Folders with Docker Compose
 
-`docker-compose.yml` mounts four folders from this computer. Set them in `.env`;
-each one left out falls back to the download folder.
+`docker-compose.yml` mounts four folders from this computer. Set them in `.env`.
+Each one left out falls back to the download folder.
 
 | `.env` variable | Mounted at | For |
 |---|---|---|
@@ -53,14 +53,14 @@ each one left out falls back to the download folder.
 | `MEDIAHARVEST_STATE` | `/state` | Lists and settings (default: `.metube` in the download folder) |
 
 On Windows, the desktop shortcut's helper sets all of these from the Settings
-page and restarts MediaHarvest with them; there is nothing to edit by hand.
+page and restarts MediaHarvest with them. There is nothing to edit by hand.
 
 ### The Settings page
 
 **Files** on the Settings page change four things while MediaHarvest runs, and
 are saved in `settings.json` in `STATE_DIR`. A saved choice wins over the
 environment variable: `DELETE_FILE_ON_TRASHCAN` (removing an item),
-`CLEAR_COMPLETED_AFTER` (whole days only; a value in seconds that is not whole
+`CLEAR_COMPLETED_AFTER` (whole days only: a value in seconds that is not whole
 days shows as *As set in .env* until changed), keeping the original after
 compressing, and keeping partial files of cancelled or failed downloads (both
 off by default).
@@ -76,7 +76,7 @@ On **Windows with Docker Desktop**, put the download folder on a Windows drive
 far more free space than the drive under it has, so the disk check before a
 download can't warn you in time.
 
-Downloads that stop part-way resume by themselves; there is nothing to set. See
+Downloads that stop part-way resume by themselves. There is nothing to set. See
 "Video, including very long ones" in the [README](../README.md).
 
 ### Compressing videos
@@ -88,7 +88,7 @@ on the same drive. How it works and what the levels do:
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `COMPRESS_GPU` | `auto` | `auto` uses an NVIDIA graphics card for the **Any device** level when the container can reach one; `off` always uses the processor. |
+| `COMPRESS_GPU` | `auto` | `auto` uses an NVIDIA graphics card for the **Any device** level when the container can reach one. `off` always uses the processor. |
 
 **Using an NVIDIA graphics card.** The container needs access to it. The
 installers add this by themselves when they find a card Docker can use. With
@@ -102,7 +102,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 or add `COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml` to `.env`
 (on Windows separate the two with `;`). With `docker run`, add
 `--gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,video`. Docker
-Desktop on Windows passes the card through by itself; on Linux install the
+Desktop on Windows passes the card through by itself. On Linux, install the
 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 The log says which one compression uses (`Compression uses the NVIDIA GPU for
 H.264`).
@@ -115,8 +115,8 @@ docker exec mediaharvest python3 /app/app/compress.py medium "/downloads/video.m
 ```
 
 Leave out `--output` to replace the file in place. The level is `light`,
-`medium`, `strong` or `compatible` (Any device, which always writes an `.mp4`);
-add `--max-height 720` (or 1080, 480, 360) to limit the resolution.
+`medium`, `strong` or `compatible` (Any device, which always writes an `.mp4`).
+Add `--max-height 720` (or 1080, 480, 360) to limit the resolution.
 
 ## File naming
 
@@ -134,9 +134,9 @@ Templates use [yt-dlp's output template syntax](https://github.com/yt-dlp/yt-dlp
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `YTDL_OPTIONS` | `{}` | Options for every download, as a JSON object — see [yt-dlp options](#yt-dlp-options). |
-| `YTDL_OPTIONS_FILE` | | Path to a JSON file of such options. Reloaded when it changes; wins over `YTDL_OPTIONS` for the same key. |
+| `YTDL_OPTIONS_FILE` | | Path to a JSON file of such options. Reloaded when it changes. Wins over `YTDL_OPTIONS` for the same key. |
 | `YTDL_OPTIONS_PRESETS` | `{}` | Named option bundles, picked per download in the UI. |
-| `YTDL_OPTIONS_PRESETS_FILE` | | Path to a JSON file of presets. Reloaded when it changes; wins over `YTDL_OPTIONS_PRESETS` for the same name. |
+| `YTDL_OPTIONS_PRESETS_FILE` | | Path to a JSON file of presets. Reloaded when it changes. Wins over `YTDL_OPTIONS_PRESETS` for the same name. |
 | `ALLOW_YTDL_OPTIONS_OVERRIDES` | `false` | Show a field for per-download yt-dlp options in the UI. Trusted users only: it allows running commands in the container. |
 | `YTDL_NIGHTLY_UPDATE_TIME` | | Use [nightly yt-dlp builds](https://github.com/yt-dlp/yt-dlp-nightly-builds), upgrading and restarting daily at this time (`HH:MM`, 24-hour). |
 
@@ -144,14 +144,14 @@ Templates use [yt-dlp's output template syntax](https://github.com/yt-dlp/yt-dlp
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `HOST` | `0.0.0.0` | Address to listen on. The default is every IPv4 interface; `*` (or empty) adds IPv6; `::` is IPv6 only. |
+| `HOST` | `0.0.0.0` | Address to listen on. The default is every IPv4 interface. `*` (or empty) adds IPv6, and `::` is IPv6 only. |
 | `PORT` | `8081` | Port to listen on. |
 | `URL_PREFIX` | `/` | Base path, for serving MediaHarvest under a subpath of a [reverse proxy](https://github.com/alexta69/metube/wiki/Reverse-proxy-configurations). |
 | `HTTPS` | `false` | Serve HTTPS directly, using `CERTFILE` and `KEYFILE`. |
 | `CERTFILE` / `KEYFILE` | | Paths to the HTTPS certificate and key. |
-| `PUBLIC_HOST_URL` | `download/` | Base URL for the links to completed files. The default is relative to MediaHarvest itself; set a full URL if the files are served from elsewhere. |
+| `PUBLIC_HOST_URL` | `download/` | Base URL for the links to completed files. The default is relative to MediaHarvest itself. Set a full URL if the files are served from elsewhere. |
 | `PUBLIC_HOST_AUDIO_URL` | `audio_download/` | The same, for audio downloads. |
-| `CORS_ALLOWED_ORIGINS` | | Comma-separated origins allowed to call MediaHarvest from other sites, as [browser extensions and bookmarklets](https://github.com/alexta69/metube/wiki/Sending-links-to-MeTube) do. `*` allows any site, so prefer naming them. |
+| `CORS_ALLOWED_ORIGINS` | | Comma-separated origins allowed to call MediaHarvest from other sites, as [browser extensions and bookmarklets](https://github.com/alexta69/metube/wiki/Sending-links-to-MeTube) do. `*` allows any site, so prefer naming them. The listed sites can also use the [MCP endpoint](MCP.md). |
 | `ALLOW_PRIVATE_ADDRESSES` | `false` | Allow URLs on private and internal addresses, turning off SSRF protection. Needed for Fake-IP proxy clients, not for ordinary proxies — [details](https://github.com/alexta69/metube/wiki/Troubleshooting-FAQ#refusing-to-fetch-internal-host-proxies-and-vpns). |
 | `ROBOTS_TXT` | | Path to a `robots.txt` file to serve, mounted into the container. |
 

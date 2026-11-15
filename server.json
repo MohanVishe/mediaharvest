@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.MohanVishe/mediaharvest",
+  "title": "MediaHarvest",
+  "description": "Read video transcripts, see every format, and download video or audio from YouTube and more.",
+  "repository": {
+    "url": "https://github.com/MohanVishe/mediaharvest",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/MohanVishe/mediaharvest/blob/main/docs/MCP.md",
+  "version": "1.1.0",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/mohanvishe/mediaharvest:1.1.0",
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://localhost:8081/mcp"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "-p",
+          "description": "Serve the web page and the MCP endpoint on this computer only",
+          "value": "127.0.0.1:8081:8081"
+        },
+        {
+          "type": "named",
+          "name": "-v",
+          "description": "Folder on this computer for the downloaded files",
+          "value": "{downloads}:/downloads",
+          "variables": {
+            "downloads": {
+              "description": "Folder on this computer for the downloaded files",
+              "format": "filepath",
+              "isRequired": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

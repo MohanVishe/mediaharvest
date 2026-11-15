@@ -123,6 +123,9 @@ ENV TEMP_DIR=/downloads
 ENV PORT=8081
 VOLUME /downloads
 EXPOSE 8081
+# The MCP endpoint is /mcp on this port. This label lets the official MCP
+# Registry confirm the image belongs to the listing in server.json.
+LABEL io.modelcontextprotocol.server.name="io.github.MohanVishe/mediaharvest"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD case "$HTTPS" in true|True|on|1) curl -fsSk "https://localhost:${PORT}/";; *) curl -fsS "http://localhost:${PORT}/";; esac || exit 1
 

@@ -24,6 +24,10 @@ network without an authenticating reverse proxy is a configuration choice, so
   listed in `CORS_ALLOWED_ORIGINS`.
 - Per-download yt-dlp options are off by default (`ALLOW_YTDL_OPTIONS_OVERRIDES`):
   they can run commands inside the container.
+- The MCP endpoint (`/mcp`, for AI assistants) refuses every request that
+  carries an `Origin` header, which means it came from a web page, unless that
+  origin is listed in `CORS_ALLOWED_ORIGINS`. This also stops DNS-rebinding
+  pages. Its tools offer no yt-dlp options.
 - File paths built from site metadata are kept inside the download folder.
 - Every binary the image downloads (ffmpeg, the PO-token helper, uv) is pinned
   to one version and checked against its SHA-256 at build time.

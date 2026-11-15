@@ -17,6 +17,10 @@ MediaHarvest is three programs working together inside one Docker container.
 The page and the server talk over a live connection (Socket.IO), so a progress
 bar moves without you reloading anything.
 
+AI assistants reach the same server another way: through MCP, at `/mcp`
+(`app/mcp_server.py`). Their tools call the same code as the page's buttons,
+so the same checks apply. Setup and the list of tools: [MCP.md](MCP.md).
+
 On Windows there is a fourth part, outside the container: a small helper
 (`windows/MediaHarvest.ps1`) that the desktop shortcut runs. It starts Docker
 Desktop and MediaHarvest, opens the page, then waits in the background. The
@@ -231,6 +235,6 @@ detection, progress, the keep-or-replace rule), `CompressPP` in
 
 ## Checking the code works
 
-There are about 1,230 automatic tests: 1,057 for the server and 174 for the
+There are about 1,250 automatic tests: 1,072 for the server and 175 for the
 page. They run in Docker, and on GitHub for every change. See
 [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -7,19 +7,30 @@
 <p align="center">
   Paste a link, see every format the video offers, and save the video or music
   in the quality and size you choose. It runs on your own computer, in Docker,
-  and as a small app on Android phones.
+  and as a small app on Android phones. AI assistants can use it too: its
+  built-in MCP server lets Claude, Cursor or VS Code read what a video says
+  and save files for you.
 </p>
 
-![A pasted YouTube link: the preview shows the video and its 13 video and 12 audio formats; below are Video, Audio, Captions and Thumbnail, the chosen options on one line, and the Downloading, Completed and Subscriptions tabs](docs/screenshot-preview.jpg)
+![A pasted YouTube link: the preview shows the video and its 13 video and 12 audio formats. Below are Video, Audio, Captions and Thumbnail, the chosen options on one line, and the Downloading, Completed and Subscriptions tabs](docs/screenshot-preview.jpg)
 
 ## What it does
 
 **Any link, every option.** Paste a link and MediaHarvest shows what it is and how
-many formats it has. **All formats** lists every stream: resolution, frame rate,
-HDR, codec, bitrate and file size, with the best and the smallest marked. Or just
-press **Download** with your usual settings. YouTube and
+many formats it has. **All formats** lists every stream with its file size and
+details (resolution, frame rate, HDR, codec and bitrate), and marks the best and
+the smallest. Or just press **Download** with your usual settings. YouTube and
 [more than a thousand other sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
-work, through [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+work. The downloading is done by [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+
+**Works with AI assistants.** MediaHarvest is also an
+[MCP](https://modelcontextprotocol.io) server, the standard way AI assistants
+use tools. Connect Claude, Cursor, VS Code or any other MCP client to
+`http://localhost:8081/mcp`, then ask in plain words:
+*"Summarise this talk"*, *"turn this cooking video into a recipe"*, *"save
+this as MP3"*. The assistant gets the video's transcript as text without
+downloading anything, checks which formats a link has, starts downloads and
+follows them. Setup for each assistant: [docs/MCP.md](docs/MCP.md).
 
 **Music that sounds right and stays small.**
 - *Original* keeps the audio exactly as the site serves it: the best quality and
@@ -37,7 +48,7 @@ work, through [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 - No length or size limit. A download that stops (the network drops, or YouTube's
   video link expires, which it does after about 6 hours) carries on by itself from
   where it stopped, with a fresh link. So does one cut off by a restart. Each
-  failed try waits longer, from 15 seconds up to 5 minutes; after 10 tries in a
+  failed try waits longer, from 15 seconds up to 5 minutes. After 10 tries in a
   row with no progress it shows as failed, and **Retry** still continues from
   the partial file.
 - Disk space is checked before a download starts, counting the room needed to
@@ -51,7 +62,7 @@ Tested on a 138-hour YouTube video (51.3 GB at 720p):
 | Level | Size | How it looks | Plays on |
 |---|---|---|---|
 | Light | 24% smaller | the same to the eye | current phones, computers, browsers |
-| Medium | 51% smaller | very close; fine detail a little softer | current phones, computers, browsers |
+| Medium | 51% smaller | very close, fine detail a little softer | current phones, computers, browsers |
 | Strong | 64% smaller | 480p, for talks and audiobooks | current phones, computers, browsers |
 | Any device | about 20% smaller | close to the original | every TV, phone and computer (MP4) |
 
@@ -79,6 +90,7 @@ captions or thumbnails on their own.
 | Guide | For |
 |---|---|
 | [Features](docs/FEATURES.md) | Every option on the page, explained simply, with which to pick |
+| [AI assistants (MCP)](docs/MCP.md) | Connect Claude, Cursor or VS Code, and what each tool does |
 | [How it works](docs/HOW-IT-WORKS.md) | What happens from link to file, how compression works, and which code does what |
 | [Configuration](docs/CONFIGURATION.md) | Settings for whoever runs it: folders, file names, ports, the graphics card |
 
@@ -147,16 +159,16 @@ music as M4A or MP3, saved to `Download/MediaHarvest`.
    | `MediaHarvest-…-armeabi-v7a-release.apk` | Older or low-cost phones. |
    | `MediaHarvest-…-x86_64-release.apk` | Chromebooks and emulators. |
 
-2. Open the file. Android asks once to allow installs from your browser; allow
+2. Open the file. Android asks once to allow installs from your browser. Allow
    it, then tap **Install**.
 3. In YouTube or your browser, tap **Share** and pick **MediaHarvest**, or paste
    a link in the app. Tap **Download**.
 
-It needs Android 10 or newer. The file is 50 to 60 MB; installed, the app
+It needs Android 10 or newer. The file is 50 to 60 MB. Installed, the app
 takes about 110 MB, and about 150 MB more once the first download unpacks
 Python and FFmpeg. Sites change often: when downloads
 start failing, tap **⋯ → Update download engine** to fetch the newest yt-dlp.
-To update the app, install the newer file over it; your list stays.
+To update the app, install the newer file over it. Your list stays.
 
 ### Update, stop, remove
 
@@ -175,14 +187,14 @@ sites working.
 
 1. Paste a link. A card shows the video and how many formats it has.
 2. Pick **Video**, **Audio**, **Captions** or **Thumbnail**. The line beside
-   them says what you'll get, for example *Video · MP4 · 1080p*; click
+   them says what you'll get, for example *Video · MP4 · 1080p*. Click
    **Options** to change it. Then press **Download**, or open **All formats** to
    choose the exact stream.
 3. Watch it in the **Downloading** tab: the line under the picture fills up as
    it downloads. If the connection drops or the link expires, it waits and
    carries on by itself.
 4. Finished files appear in the **Completed** tab. Click one to save it to the
-   device you're using; they're also in the download folder. Point at a row for
+   device you're using. They're also in the download folder. Point at a row for
    its buttons: save, make smaller, and **⋯** for the rest.
 
 Every option is explained in [docs/FEATURES.md](docs/FEATURES.md).
@@ -222,7 +234,8 @@ flowchart LR
 The web page (`ui/`) sends your choice to a small Python server (`app/`). The
 server runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) to download and
 [ffmpeg](https://ffmpeg.org) to join, convert and compress, and keeps the page
-updated live. A download that stops starts again from where it was. Every
+updated live. AI assistants reach the same server through its MCP endpoint
+(`app/mcp_server.py`). A download that stops starts again from where it was. Every
 step, and which file does it, is explained without jargon in
 [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
@@ -237,6 +250,8 @@ step, and which file does it, is explained without jargon in
 - **Cookies** are a signed-in session. Upload them only when a video needs them,
   and use a separate account.
 - Keep **per-download yt-dlp options** off (the default): they can run commands.
+- **The MCP server** has the same checks as the page, cannot reach the yt-dlp
+  options, and refuses requests from web pages, so a site you visit can't use it.
 - **The Android app** asks for internet and notifications only, no storage,
   contacts, location or account access. It connects to the sites you download
   from, and to GitHub only when you tap *Update download engine*. Nothing is
@@ -253,9 +268,9 @@ Everything builds and runs in Docker, through the dev container. See
 ## Legal
 
 Download only what you have the right to. Some sites' terms forbid downloading
-except through their own apps; downloaded music is for personal use.
+except through their own apps. Downloaded music is for personal use.
 
 ## License
 
 [AGPL-3.0](LICENSE). MediaHarvest is based on
-[MeTube](https://github.com/alexta69/metube) (AGPL-3.0); see [NOTICE](NOTICE).
+[MeTube](https://github.com/alexta69/metube) (AGPL-3.0). See [NOTICE](NOTICE).

@@ -152,7 +152,8 @@ def summarize(info: dict) -> dict:
     }
 
 
-def _extract(config, url: str, extra_opts: dict, video_password: Optional[str]) -> Optional[dict]:
+def probe_params(config, extra_opts: Optional[dict] = None, video_password: Optional[str] = None) -> dict:
+    """yt-dlp options that read a video's details and never write a file."""
     params: dict[str, Any] = {
         'quiet': not logging.getLogger().isEnabledFor(logging.DEBUG),
         'verbose': logging.getLogger().isEnabledFor(logging.DEBUG),
@@ -176,8 +177,11 @@ def _extract(config, url: str, extra_opts: dict, video_password: Optional[str]) 
     }
     if video_password:
         params['videopassword'] = video_password
-    params = _impersonate_opt(params)
-    with yt_dlp.YoutubeDL(params=params) as ydl:
+    return _impersonate_opt(params)
+
+
+def _extract(config, url: str, extra_opts: dict, video_password: Optional[str]) -> Optional[dict]:
+    with yt_dlp.YoutubeDL(params=probe_params(config, extra_opts, video_password)) as ydl:
         return ydl.extract_info(url, download=False)
 
 

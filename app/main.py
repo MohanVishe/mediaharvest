@@ -23,6 +23,7 @@ import app_settings
 import bg_tasks
 import format_catalog
 import format_probe
+import mcp_server
 from ytdl import DownloadQueueNotifier, DownloadQueue, Download
 from download_options import DownloadOptions
 from subscriptions import SubscriptionManager, SubscriptionNotifier, SubscriptionInfo, browse_playlist, coerce_optional_bool
@@ -1746,6 +1747,14 @@ if config.URL_PREFIX != '/':
     @routes.get(config.URL_PREFIX[:-1])
     async def index_redirect_dir(request):
         return web.HTTPFound(config.URL_PREFIX)
+
+# MCP for AI agents (app/mcp_server.py). Registered before the static routes,
+# whose catch-all at URL_PREFIX would otherwise answer /mcp with a 404.
+mcp_endpoint = mcp_server.create(
+    config, dqueue, parse_download_options, os.getenv('METUBE_VERSION', 'dev'),
+    origin_allowed=lambda origin: '*' in _cors_origins or origin in _cors_origins)
+routes.route('*', config.URL_PREFIX + 'mcp')(mcp_endpoint.handle)
+app.cleanup_ctx.append(mcp_endpoint.lifespan)
 
 routes.static(config.URL_PREFIX + 'download/', config.DOWNLOAD_DIR, show_index=config.DOWNLOAD_DIRS_INDEXABLE)
 routes.static(config.URL_PREFIX + 'audio_download/', config.AUDIO_DOWNLOAD_DIR, show_index=config.DOWNLOAD_DIRS_INDEXABLE)

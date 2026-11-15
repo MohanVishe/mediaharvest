@@ -9,6 +9,7 @@ dependencies = [
     # mutagen and curl-cffi come with the default and curl-cffi extras.
     "yt-dlp[default,curl-cffi,deno]",
     "watchfiles",
+    "mcp==2.3.0",
 ]
 
 [dependency-groups]
