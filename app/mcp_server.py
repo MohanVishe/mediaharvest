@@ -45,7 +45,8 @@ _FINISHED_LIMIT = 50
 # the tool-output limits of MCP clients (Claude Code stops at 25,000 tokens).
 _PART_CHARS = 30_000
 
-_READ = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
+# Every tool sets all four hints: some directories reject a tool missing one.
+_READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 _TAG = re.compile(r'<[^>]+>')
 
 
@@ -189,7 +190,8 @@ def build_server(config, dqueue, parse_options, version: str) -> MCPServer:
         result.update(text=result['text'][start:start + _PART_CHARS], part=part, parts=parts)
         return result
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                             idempotentHint=False, openWorldHint=True))
     async def download(
         url: str,
         kind: Literal['video', 'audio', 'captions', 'thumbnail'] = 'video',
@@ -219,7 +221,8 @@ def build_server(config, dqueue, parse_options, version: str) -> MCPServer:
             raise ToolError(status.get('msg') or 'Could not add the download.')
         return {'queued': url, 'note': status.get('msg') or 'Added. Check list_downloads for progress.'}
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                             idempotentHint=True, openWorldHint=False))
     async def list_downloads() -> dict[str, Any]:
         """Downloads that are queued or running, and the most recent finished
         ones (newest first, at most 50). status is queued, scheduled (a live

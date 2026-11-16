@@ -173,6 +173,10 @@ async def test_lists_the_five_tools_with_hints(mcp_url):
     assert tools['get_transcript'].annotations.read_only_hint is True
     assert tools['download'].annotations.read_only_hint is False
     assert tools['download'].input_schema['properties']['kind']['enum'] == ['video', 'audio', 'captions', 'thumbnail']
+    for tool in tools.values():  # all four hints, as true or false, on every tool
+        hints = tool.annotations
+        assert all(isinstance(getattr(hints, f'{h}_hint'), bool)
+                   for h in ('read_only', 'destructive', 'idempotent', 'open_world')), tool.name
 
 
 async def test_download_queues_through_the_same_validation(mcp_url, dqueue):
