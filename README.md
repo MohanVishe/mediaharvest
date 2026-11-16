@@ -30,7 +30,9 @@ use tools. Connect Claude, Cursor, VS Code or any other MCP client to
 *"Summarise this talk"*, *"turn this cooking video into a recipe"*, *"save
 this as MP3"*. The assistant gets the video's transcript as text without
 downloading anything, checks which formats a link has, starts downloads and
-follows them. Setup for each assistant: [docs/MCP.md](docs/MCP.md).
+follows them. Setup for each assistant: [docs/MCP.md](docs/MCP.md). It is
+listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.MohanVishe/mediaharvest)
+as `io.github.MohanVishe/mediaharvest`.
 
 **Music that sounds right and stays small.**
 - *Original* keeps the audio exactly as the site serves it: the best quality and

@@ -8,11 +8,11 @@
     "source": "github"
   },
   "websiteUrl": "https://github.com/MohanVishe/mediaharvest/blob/main/docs/MCP.md",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/mohanvishe/mediaharvest:1.1.0",
+      "identifier": "ghcr.io/mohanvishe/mediaharvest:1.1.1",
       "transport": {
         "type": "streamable-http",
         "url": "http://localhost:8081/mcp"
